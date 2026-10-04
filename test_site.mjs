@@ -313,9 +313,16 @@ try {
   await page.locator("#audioSyncPlay").click();
 
   await page.locator('[data-tab="screen-sync"]').click();
+  await page.waitForFunction(() => document.querySelector("#providerBadge")?.textContent === "SCREEN READY");
+  assert.equal(await page.locator("#audioSyncVideo").isVisible(), true);
+  assert.equal(await page.locator("#screenSyncExample option").count(), 2);
+  await page.locator("#screenSyncExample").selectOption("witcher-bear");
+  await page.waitForFunction(() => document.querySelector("#audioSyncVideo").readyState >= 2 && document.querySelector("#audioSyncVideo").currentSrc.endsWith("witcher-3-remastered-bear.mp4"));
+  await page.locator("#screenSyncPlay").click();
   await page.waitForFunction(() => document.querySelector("#providerBadge")?.textContent === "SCREEN SYNC");
+  await page.waitForFunction(() => new Set([...document.querySelectorAll("#logicalLeds i")].map((led) => getComputedStyle(led).backgroundColor)).size >= 3, null, { timeout: 5000 });
   assert.match(await page.locator("#signalName").textContent(), /Panorama/);
-  await page.locator("#screenSyncScene").selectOption("night");
+  assert.match(await page.locator("#signalReadout").textContent(), /The Witcher 3 Remastered/);
   await page.locator("#screenSyncStyle").selectOption("ambient");
   await page.waitForFunction(() => {
     const colours = [...document.querySelectorAll("#logicalLeds i")].map((led) => getComputedStyle(led).backgroundColor);
@@ -329,7 +336,10 @@ try {
   assert.equal(await page.locator("#screenSyncBrightnessValue").textContent(), "48 / 255");
   assert.equal(await page.locator("#screenSyncBlackThresholdValue").textContent(), "12");
   await page.locator("#screenSyncReplay").click();
+  await page.locator("#screenSyncExample").selectOption("silksong");
+  await page.waitForFunction(() => document.querySelector("#audioSyncVideo").readyState >= 2 && document.querySelector("#audioSyncVideo").currentSrc.endsWith("karmelita-prime.mp4"));
   await page.locator(".workbench").screenshot({ path: "/tmp/gabecubeaura-concept-screen-sync.png" });
+  await page.locator("#screenSyncPlay").click();
 
   await page.locator('[data-tab="witcher"]').click();
   await page.waitForFunction(() => document.querySelector("#providerBadge")?.textContent === "EXPERIMENTAL");

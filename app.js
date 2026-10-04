@@ -124,11 +124,6 @@ const WEATHER_OPTIONS = {
   storm: ["Pulse and echoes", "Storm break"],
 };
 const WEATHER_ICONS = { clear_day: "☀", clear_night: "☾", rain: "☂", cloud: "☁", breaks: "⛅", breaks_night: "☾", snow: "❄", storm: "⚡" };
-const SCREEN_SYNC_SCENES = {
-  sky: [[35, 124, 205], [68, 189, 225], [236, 216, 170], [224, 130, 60]],
-  forest: [[20, 61, 45], [45, 126, 59], [182, 174, 68], [235, 199, 107]],
-  night: [[8, 18, 54], [25, 49, 112], [178, 43, 162], [38, 206, 218]],
-};
 const WITCHER_SIGNS = {
   aard: [158, 214, 255], axii: [255, 255, 255], igni: [255, 79, 10],
   quen: [255, 205, 68], yrden: [200, 81, 255],
@@ -182,7 +177,7 @@ function defaultState() {
     audioSyncPalette: "screen-sync", audioSyncColours: ["#00aaff", "#702aff", "#ff308c"],
     audioLevels: Array(17).fill(0), audioLeft: 0, audioRight: 0, audioVideoColours: null, audioVideoPalette: null, audioArtworkPalette: null,
     audioMetrics: { impact: 0, attack: 0, texture: 0, stereo: 0, window: 0 }, audioHistory: [], audioCrests: [],
-    screenSyncStyle: "panorama", screenSyncScene: "sky", screenSyncBrightness: 160, screenSyncReactivity: "balanced", screenSyncIntensity: "natural", screenSyncBlackThreshold: 8, screenSyncBlackBars: true, screenSyncStart: 0,
+    screenSyncStyle: "panorama", screenSyncBrightness: 160, screenSyncReactivity: "balanced", screenSyncIntensity: "natural", screenSyncBlackThreshold: 8, screenSyncBlackBars: true, screenSyncStart: 0, screenVideoColours: null,
     witcherHealth: 72, witcherStamina: 86, witcherToxicity: 0, witcherAdrenaline: 2, witcherCombat: true,
     customPattern: "steady", customPaletteCount: 2, customColours: ["#FFD000", "#00C8FF", "#FF3C9D"], customBrightness: 128, customSpeed: 50, customDirection: "forward",
     launchGame: "drg", launchSource: "hero", launchColourCount: 2, launchPattern: "arpege-crossed", launchDuration: 20,
@@ -208,6 +203,7 @@ let audioRightData = null;
 let audioLastAnalysis = 0;
 let audioLastCapture = 0;
 let audioLastVideoSample = 0;
+let screenLastVideoSample = 0;
 let audioVideoPrevious = null;
 let audioVideoSourceActive = false;
 let audioVideoBarCandidate = [0, 0];
@@ -419,21 +415,23 @@ function weatherFrame() {
   return { logical: frame, physical: frame, name: `${state.weatherCondition.replaceAll("_", " ")} · ${WEATHER_OPTIONS[state.weatherCondition][variant]}`, readout: `${state.weatherUnit === "fahrenheit" ? "64°F" : "18°C"} · sample sky`, explain: "An eight-second weather loop repeats on the light bar. The exact temperature is text only, never encoded as LED colours.", badge: "WEATHER" };
 }
 function screenSyncFrame() {
-  const palette = SCREEN_SYNC_SCENES[state.screenSyncScene] || SCREEN_SYNC_SCENES.sky;
-  const movement = ((clock - state.screenSyncStart) / 9000) % 1;
-  const raw = Array.from({ length: 17 }, (_, index) => {
-    const position = (index / 16 + movement * .18) % 1;
-    const scaled = position * (palette.length - 1);
-    const left = Math.floor(scaled), right = Math.min(palette.length - 1, left + 1);
-    let colour = blend(palette[left], palette[right], scaled - left);
-    const [hue, saturation, value] = rgbToHsv(colour);
-    colour = hsvToRgb([hue, clamp(saturation * (state.screenSyncIntensity === "vivid" ? 1.3 : 1), 0, 1), value * state.screenSyncBrightness / 255]);
-    return screenLuma(colour) <= state.screenSyncBlackThreshold ? [0, 0, 0] : colour;
-  });
-  const frame = state.screenSyncStyle === "ambient"
-    ? Array.from({ length: 17 }, () => [0, 1, 2].map((channel) => Math.round(raw.reduce((sum, pixel) => sum + pixel[channel], 0) / raw.length)))
-    : raw;
-  return { logical: frame, physical: frame, name: `Screen Sync · ${state.screenSyncStyle === "ambient" ? "Ambient" : "Panorama"}`, readout: `${state.screenSyncScene} sample · local simulation`, explain: "The real beta samples Gamescope in memory. Steam activity, alerts, launches and countdowns remain above this permanent display.", badge: "SCREEN SYNC" };
+  const video = $("#audioSyncVideo"), now = performance.now();
+  if (video.readyState >= 2 && now - screenLastVideoSample >= 100) {
+    screenLastVideoSample = now;
+    state.screenVideoColours = sampleGameplayVideoColours(video);
+  }
+  const frame = state.screenVideoColours?.length === 17 ? state.screenVideoColours : blank();
+  const position = Number.isFinite(video.currentTime) ? formatTime(video.currentTime) : "0:00";
+  const duration = Number.isFinite(video.duration) ? formatTime(video.duration) : "0:00";
+  const crop = audioVideoStableBars[0] || audioVideoStableBars[1]
+    ? ` · crop ${audioVideoStableBars[0]}+${audioVideoStableBars[1]}` : "";
+  return {
+    logical: frame, physical: frame,
+    name: `Screen Sync · ${state.screenSyncStyle === "ambient" ? "Ambient" : "Panorama"}`,
+    readout: `${AUDIO_EXAMPLES[state.audioSyncExample].title} · 10 fps${crop} · ${position} / ${duration}`,
+    explain: "Each displayed frame follows the current Screen Sync processor: 34 by 18 capture, zone averaging, spatial blur, stable black-bar crop and asymmetric response smoothing.",
+    badge: video.paused ? "SCREEN READY" : "SCREEN SYNC",
+  };
 }
 function audioPaletteFrame(mirrored = true) {
   let raw;
@@ -565,11 +563,14 @@ function resetAudioVideoProcessor() {
   audioVideoBlackStreak = 0;
   state.audioVideoColours = null;
   state.audioVideoPalette = null;
+  state.screenVideoColours = null;
+  state.screenPaletteSamples = null;
+  screenLastVideoSample = 0;
 }
-function sampleAudioVideoColours(video) {
+function sampleGameplayVideoColours(video) {
   if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
     audioVideoSourceActive = false;
-    return audioPaletteFrame();
+    return state.screenVideoColours || blank();
   }
   try {
     const context = audioVideoCanvas.getContext("2d", { willReadFrequently: true });
@@ -579,6 +580,7 @@ function sampleAudioVideoColours(video) {
     const [top, bottom] = detectAudioVideoBars(pixels);
     const rows = [];
     for (let row = top; row < Math.max(top + 1, 18 - bottom); row++) rows.push(row);
+    state.screenPaletteSamples = rows.flatMap((row) => Array.from({ length: 34 }, (_, column) => pixels[row * 34 + column]));
     let colours;
     if (state.screenSyncStyle === "ambient") {
       const colour = meanScreenColour(rows.flatMap((row) => Array.from({ length: 34 }, (_, column) => pixels[row * 34 + column])));
@@ -608,15 +610,19 @@ function sampleAudioVideoColours(video) {
       });
     }
     audioVideoPrevious = result;
-    const palette = harmonizeAudioPalette(result);
-    state.audioVideoPalette = palette;
-    if (!state.audioArtworkPalette) state.audioArtworkPalette = palette.map((colour) => [...colour]);
     audioVideoSourceActive = true;
-    return audioPaletteFrame();
+    return result;
   } catch (_error) {
     audioVideoSourceActive = false;
-    return audioPaletteFrame();
+    return state.screenVideoColours || blank();
   }
+}
+function sampleAudioVideoColours(video) {
+  const colours = sampleGameplayVideoColours(video);
+  const palette = harmonizeAudioPalette(state.screenPaletteSamples || colours);
+  state.audioVideoPalette = palette;
+  if (!state.audioArtworkPalette) state.audioArtworkPalette = palette.map((colour) => [...colour]);
+  return audioPaletteFrame();
 }
 function audioRms(values) {
   let sum = 0;
@@ -1279,7 +1285,7 @@ function drawPhysical(frame) {
 }
 function renderStage() {
   const output = getCurrentOutput();
-  $("#audioSyncVideo").hidden = state.tab !== "audio-sync";
+  $("#audioSyncVideo").hidden = !["audio-sync", "screen-sync"].includes(state.tab);
   ledElements.forEach((element, index) => {
     const color = output.logical[index] || OFF;
     element.style.background = isLit(color) ? rgbToHex(color) : "#33454e";
@@ -1317,8 +1323,8 @@ function renderStage() {
   $("#providerBadge").textContent = output.badge;
   $("#mobileSignal").textContent = output.name;
   const stagedGame = state.tab === "launches" ? state.launchGame : state.game;
-  if (state.tab === "audio-sync") {
-    $("#contextLabel").textContent = `GAMEPLAY AUDIO · ${AUDIO_EXAMPLES[state.audioSyncExample].title}`;
+  if (["audio-sync", "screen-sync"].includes(state.tab)) {
+    $("#contextLabel").textContent = `${state.tab === "audio-sync" ? "GAMEPLAY AUDIO" : "GAMEPLAY VIDEO"} · ${AUDIO_EXAMPLES[state.audioSyncExample].title}`;
     $("#contextSwitch").disabled = true;
     $("#contextSwitch").textContent = "LOCAL MEDIA";
   } else {
@@ -1334,6 +1340,7 @@ function renderStage() {
     $("#launchStatus").textContent = state.launchPlaying ? `Playing · ${Math.ceil(remaining)} s` : paletteReady ? `Ready · ${state.launchDuration} s` : "Waiting for colours";
   }
   if (state.tab === "audio-sync") syncAudioPlaybackUI();
+  if (state.tab === "screen-sync") syncScreenPlaybackUI();
 }
 function tick(realNow) {
   const elapsed = clamp(realNow - lastRealTime, 0, 100);
@@ -1561,6 +1568,7 @@ function syncAudioUI() {
     resetAudioVideoProcessor();
   }
   $("#audioSyncExample").value = state.audioSyncExample;
+  $("#screenSyncExample").value = state.audioSyncExample;
   $("#audioSyncStyle").value = state.audioSyncStyle;
   $("#audioSyncReactivity").value = state.audioSyncReactivity;
   $("#audioSyncBrightness").value = String(state.audioSyncBrightness);
@@ -1593,6 +1601,31 @@ function syncAudioPlaybackUI() {
     $("#pauseDemo").textContent = video.paused ? "▶" : "Ⅱ";
     $("#pauseDemo").setAttribute("aria-label", video.paused ? "Play gameplay audio" : "Pause gameplay audio");
   }
+}
+function syncScreenPlaybackUI() {
+  const video = $("#audioSyncVideo");
+  $("#screenSyncPlay").textContent = video.paused ? "Play Screen Sync" : "Pause Screen Sync";
+  if (state.tab === "screen-sync") {
+    $("#pauseDemo").textContent = video.paused ? "▶" : "Ⅱ";
+    $("#pauseDemo").setAttribute("aria-label", video.paused ? "Play gameplay video" : "Pause gameplay video");
+  }
+}
+function selectGameplayExample(key) {
+  const video = $("#audioSyncVideo"), example = AUDIO_EXAMPLES[key] || AUDIO_EXAMPLES.silksong;
+  video.pause();
+  state.audioSyncExample = key in AUDIO_EXAMPLES ? key : "silksong";
+  state.audioLevels.fill(0); state.audioLeft = 0; state.audioRight = 0;
+  state.audioHistory = []; state.audioCrests = []; state.audioHifiCrests = []; state.audioArtworkPalette = null;
+  state.audioLastImpact = 0; state.audioLastPulse = -10; state.audioLastHifiCrest = -10; state.audioHueShift = 0; state.audioHueTarget = 0;
+  state.audioMetrics = { impact: 0, attack: 0, texture: 0, stereo: 0, window: 0 };
+  resetAudioVideoProcessor();
+  video.src = example.source;
+  video.setAttribute("aria-label", `${example.title} gameplay used for the Audio Sync and Screen Sync demonstrations`);
+  video.load();
+  $("#audioSyncExample").value = state.audioSyncExample;
+  $("#screenSyncExample").value = state.audioSyncExample;
+  syncAudioPlaybackUI();
+  syncScreenPlaybackUI();
 }
 async function ensureAudioGraph() {
   const Context = window.AudioContext || window.webkitAudioContext;
@@ -1633,9 +1666,10 @@ async function toggleAudioPlayback() {
     $("#audioSyncTime").textContent = error instanceof Error ? error.message : String(error);
   }
   syncAudioPlaybackUI();
+  syncScreenPlaybackUI();
 }
 function setTab(tab, configure = true) {
-  if (state.tab === "audio-sync" && tab !== "audio-sync") $("#audioSyncVideo").pause();
+  if (["audio-sync", "screen-sync"].includes(state.tab) && !["audio-sync", "screen-sync"].includes(tab)) $("#audioSyncVideo").pause();
   state.tab = tab;
   $$(".tab").forEach((button) => { const active = button.dataset.tab === tab; button.classList.toggle("active", active); button.setAttribute("aria-selected", String(active)); });
   $$(".pane").forEach((pane) => pane.classList.toggle("active", pane.dataset.pane === tab));
@@ -1649,7 +1683,7 @@ function setTab(tab, configure = true) {
     if (tab === "controllers") { state.display = "performance"; state.context = "home"; state.timerRunning = false; state.padCharging = false; state.controllerWhere = "home"; state.weatherWhere = "off"; $("#controllerWhere").value = "home"; $("#weatherWhere").value = "off"; $("#padCharging").checked = false; }
     if (tab === "weather") { state.display = "performance"; state.context = "home"; state.timerRunning = false; state.padCharging = false; state.controllerWhere = "off"; state.weatherWhere = "home"; state.weatherStart = clock; $("#controllerWhere").value = "off"; $("#weatherWhere").value = "home"; $("#padCharging").checked = false; }
     if (tab === "audio-sync") { state.display = "audio-sync"; state.context = "game"; state.timerRunning = false; state.launchPlaying = false; state.controllerWhere = "off"; state.weatherWhere = "off"; }
-    if (tab === "screen-sync") { state.context = "game"; state.timerRunning = false; state.launchPlaying = false; state.controllerWhere = "off"; state.weatherWhere = "off"; state.screenSyncStart = clock; }
+    if (tab === "screen-sync") { state.context = "game"; state.timerRunning = false; state.launchPlaying = false; state.controllerWhere = "off"; state.weatherWhere = "off"; state.screenSyncStart = clock; resetAudioVideoProcessor(); }
     if (tab === "witcher") { state.game = "witcher"; state.context = "game"; state.timerRunning = false; state.launchPlaying = false; state.controllerWhere = "off"; state.weatherWhere = "off"; }
     if (tab === "events") { state.display = "performance"; state.context = "game"; state.timerRunning = false; playEvent(); }
     $("#contextChoice").value = state.context;
@@ -1852,21 +1886,8 @@ function bindControls() {
   bindValue("weatherBrightness", "weatherBrightness", Number);
   bindValue("weatherCutoff", "weatherCutoff", Number);
   $("#weatherReplay").addEventListener("click", () => { state.weatherStart = clock; });
-  $("#audioSyncExample").addEventListener("change", (event) => {
-    const video = $("#audioSyncVideo");
-    video.pause();
-    state.audioSyncExample = event.target.value;
-    state.audioLevels.fill(0); state.audioLeft = 0; state.audioRight = 0;
-    state.audioHistory = []; state.audioCrests = []; state.audioHifiCrests = []; state.audioArtworkPalette = null;
-    state.audioLastImpact = 0; state.audioLastPulse = -10; state.audioLastHifiCrest = -10; state.audioHueShift = 0; state.audioHueTarget = 0;
-    state.audioMetrics = { impact: 0, attack: 0, texture: 0, stereo: 0, window: 0 };
-    resetAudioVideoProcessor();
-    const example = AUDIO_EXAMPLES[state.audioSyncExample];
-    video.src = example.source;
-    video.setAttribute("aria-label", `${example.title} gameplay used for the Audio Sync demonstration`);
-    video.load();
-    syncAudioPlaybackUI();
-  });
+  $("#audioSyncExample").addEventListener("change", (event) => selectGameplayExample(event.target.value));
+  $("#screenSyncExample").addEventListener("change", (event) => selectGameplayExample(event.target.value));
   bindValue("audioSyncStyle", "audioSyncStyle", String, () => { state.audioCrests = []; state.audioHifiCrests = []; syncAudioUI(); });
   bindValue("audioSyncReactivity", "audioSyncReactivity");
   bindValue("audioSyncBrightness", "audioSyncBrightness", Number);
@@ -1884,19 +1905,23 @@ function bindControls() {
     resetAudioVideoProcessor();
     if (audioVideo.paused) await toggleAudioPlayback();
   });
-  audioVideo.addEventListener("play", () => { void ensureAudioGraph().then(syncAudioPlaybackUI).catch((error) => {
+  audioVideo.addEventListener("play", () => { void ensureAudioGraph().then(() => { syncAudioPlaybackUI(); syncScreenPlaybackUI(); }).catch((error) => {
     $("#audioSyncState").textContent = "Audio analysis unavailable";
     $("#audioSyncTime").textContent = error instanceof Error ? error.message : String(error);
   }); });
-  for (const event of ["loadedmetadata", "timeupdate", "pause", "ended", "error"]) audioVideo.addEventListener(event, syncAudioPlaybackUI);
-  bindValue("screenSyncStyle", "screenSyncStyle");
-  bindValue("screenSyncScene", "screenSyncScene", String, () => { state.screenSyncStart = clock; });
+  for (const event of ["loadedmetadata", "timeupdate", "pause", "ended", "error"]) audioVideo.addEventListener(event, () => { syncAudioPlaybackUI(); syncScreenPlaybackUI(); });
+  bindValue("screenSyncStyle", "screenSyncStyle", String, resetAudioVideoProcessor);
   bindValue("screenSyncBrightness", "screenSyncBrightness", Number);
   bindValue("screenSyncReactivity", "screenSyncReactivity");
   bindValue("screenSyncIntensity", "screenSyncIntensity");
   bindValue("screenSyncBlackThreshold", "screenSyncBlackThreshold", Number);
   $("#screenSyncBlackBars").addEventListener("change", (event) => { state.screenSyncBlackBars = event.target.checked; });
-  $("#screenSyncReplay").addEventListener("click", () => { state.screenSyncStart = clock; });
+  $("#screenSyncPlay").addEventListener("click", toggleAudioPlayback);
+  $("#screenSyncReplay").addEventListener("click", async () => {
+    audioVideo.currentTime = 0;
+    resetAudioVideoProcessor();
+    if (audioVideo.paused) await toggleAudioPlayback();
+  });
   bindValue("witcherHealth", "witcherHealth", Number);
   bindValue("witcherStamina", "witcherStamina", Number);
   bindValue("witcherToxicity", "witcherToxicity", Number);
@@ -1915,10 +1940,10 @@ function bindControls() {
   });
   $("#resetDemo").addEventListener("click", resetDemo);
   $("#pauseDemo").addEventListener("click", () => {
-    if (state.tab === "audio-sync") { void toggleAudioPlayback(); return; }
+    if (["audio-sync", "screen-sync"].includes(state.tab)) { void toggleAudioPlayback(); return; }
     state.paused = !state.paused; $("#pauseDemo").textContent = state.paused ? "▶" : "Ⅱ"; $("#pauseDemo").setAttribute("aria-label", state.paused ? "Play animation" : "Pause animation");
   });
-  $("#resetView").addEventListener("click", () => { if (state.overlay) state.overlay.start = clock; else if (state.tab === "events") playEvent(); else if (state.tab === "controllers") playController(); else if (state.tab === "weather") state.weatherStart = clock; else if (state.tab === "audio-sync") { audioVideo.currentTime = 0; state.audioLevels.fill(0); state.audioLeft = 0; state.audioRight = 0; resetAudioVideoProcessor(); } else if (state.tab === "screen-sync") state.screenSyncStart = clock; else state.timerElapsed = 0; });
+  $("#resetView").addEventListener("click", () => { if (state.overlay) state.overlay.start = clock; else if (state.tab === "events") playEvent(); else if (state.tab === "controllers") playController(); else if (state.tab === "weather") state.weatherStart = clock; else if (["audio-sync", "screen-sync"].includes(state.tab)) { audioVideo.currentTime = 0; state.audioLevels.fill(0); state.audioLeft = 0; state.audioRight = 0; resetAudioVideoProcessor(); } else state.timerElapsed = 0; });
   window.addEventListener("resize", () => { updateSampleLine(); updateMobilePreviewVisibility(); });
   window.addEventListener("scroll", updateMobilePreviewVisibility, { passive: true });
 }
@@ -1932,7 +1957,7 @@ function resetDemo() {
   if (customObjectUrl) { URL.revokeObjectURL(customObjectUrl); customObjectUrl = null; }
   for (const [id, value] of Object.entries({ customBrightness: state.customBrightness, customSpeed: state.customSpeed, launchDuration: state.launchDuration, artSource: state.artSource, artMode: state.artMode, artRow: state.artRow, gameDisplay: "inherit", perfMetric: state.metric, perfDirection: state.direction, cpuLoad: state.cpu, cpuTemp: state.cpuTemp, gpuLoad: state.gpu, gpuTemp: state.gpuTemp, perfPalette: state.palette, perfResponse: state.response, coolColor: state.coolColor, middleColor: state.middleColor, hotColor: state.hotColor, coolTemp: state.coolTemp, hotTemp: state.hotTemp, timerDuration: state.timerDuration, timerScale: state.timerScale, timerRemaining: state.timerRemaining, timerColor: state.timerColor, timerSpeed: state.timerSpeed, controllerCount: state.padCount, padOne: state.padOne, padTwo: state.padTwo, padThree: state.padThree, padFour: state.padFour, controllerTarget: state.controllerTarget, controllerWhere: state.controllerWhere, chargeMode: state.chargeMode, alertWhere: state.alertWhere, lowThreshold: state.lowThreshold, padBrightness: state.padBrightness, padHealthy: state.padHealthy, padMedium: state.padMedium, padLow: state.padLow, padCharge: state.padCharge, padPlayerOne: state.padPlayerColours[0], padPlayerTwo: state.padPlayerColours[1], padPlayerThree: state.padPlayerColours[2], padPlayerFour: state.padPlayerColours[3], weatherCondition: state.weatherCondition, weatherWhere: state.weatherWhere, weatherUnit: state.weatherUnit, weatherBrightness: state.weatherBrightness, weatherCutoff: state.weatherCutoff, audioSyncExample: state.audioSyncExample, audioSyncStyle: state.audioSyncStyle, audioSyncReactivity: state.audioSyncReactivity, audioSyncBrightness: state.audioSyncBrightness, audioSyncPalette: state.audioSyncPalette, audioSyncColourHigh: state.audioSyncColours[0], audioSyncColourMiddle: state.audioSyncColours[1], audioSyncColourLow: state.audioSyncColours[2], screenSyncStyle: state.screenSyncStyle, screenSyncScene: state.screenSyncScene, screenSyncBrightness: state.screenSyncBrightness, screenSyncReactivity: state.screenSyncReactivity, screenSyncIntensity: state.screenSyncIntensity, screenSyncBlackThreshold: state.screenSyncBlackThreshold, witcherHealth: state.witcherHealth, witcherStamina: state.witcherStamina, witcherToxicity: state.witcherToxicity, witcherAdrenaline: state.witcherAdrenaline, extraDark: state.extraDark, contextChoice: state.context, displayChoice: state.display })) { const element = $(`#${id}`); if (element) element.value = String(value); }
   audioVideo.src = AUDIO_EXAMPLES[state.audioSyncExample].source;
-  audioVideo.setAttribute("aria-label", `${AUDIO_EXAMPLES[state.audioSyncExample].title} gameplay used for the Audio Sync demonstration`);
+  audioVideo.setAttribute("aria-label", `${AUDIO_EXAMPLES[state.audioSyncExample].title} gameplay used for the Audio Sync and Screen Sync demonstrations`);
   audioVideo.load();
   $("#timerRemaining").max = String(state.timerDuration * 60);
   for (const [id, checked] of Object.entries({ perfHome: state.perfHome, recordIsolation: state.recordIsolation, padCharging: state.padCharging, weatherTopbar: state.weatherTopbar, screenSyncBlackBars: state.screenSyncBlackBars, witcherCombat: state.witcherCombat, reversePhysical: state.reversePhysical })) $(`#${id}`).checked = checked;
