@@ -175,7 +175,7 @@ function defaultState() {
     weatherWhere: "off", weatherTopbar: false, weatherUnit: "celsius", weatherBrightness: 70, weatherCutoff: 0, weatherStart: 0,
     audioSyncExample: "silksong", audioSyncStyle: "hifi-crest", audioSyncReactivity: "balanced", audioSyncBrightness: 160,
     audioSyncPalette: "screen-sync", audioSyncColours: ["#00aaff", "#702aff", "#ff308c"],
-    audioLevels: Array(17).fill(0), audioLeft: 0, audioRight: 0, audioVideoColours: null, audioVideoPalette: null, audioArtworkPalette: null,
+    audioLevels: Array(17).fill(0), audioLeft: 0, audioRight: 0, audioVideoColours: null, audioVideoPalette: null, audioScreenPalette: null, audioArtworkPalette: null,
     audioMetrics: { impact: 0, attack: 0, texture: 0, stereo: 0, window: 0 }, audioHistory: [], audioCrests: [],
     screenSyncStyle: "panorama", screenSyncBrightness: 160, screenSyncReactivity: "balanced", screenSyncIntensity: "natural", screenSyncBlackThreshold: 8, screenSyncBlackBars: true, screenSyncStart: 0, screenVideoColours: null,
     witcherHealth: 72, witcherStamina: 86, witcherToxicity: 0, witcherAdrenaline: 2, witcherCombat: true,
@@ -195,13 +195,12 @@ let artworkLoadToken = 0;
 let launchArtworkLoadToken = 0;
 let customObjectUrl = null;
 let audioContext = null;
-let audioMediaSource = null;
-let audioLeftAnalyser = null;
-let audioRightAnalyser = null;
-let audioLeftData = null;
-let audioRightData = null;
+let audioDecodedBuffer = null;
+let audioDecodedSource = "";
+let audioDecodePromise = null;
+const audioLeftData = new Float32Array(2048);
+const audioRightData = new Float32Array(2048);
 let audioLastAnalysis = 0;
-let audioLastCapture = 0;
 let audioLastVideoSample = 0;
 let screenLastVideoSample = 0;
 let audioVideoPrevious = null;
@@ -448,22 +447,111 @@ function audioPaletteFrame(mirrored = true) {
     return distance <= .5 ? blend(colours[2], colours[1], distance * 2) : blend(colours[1], colours[0], (distance - .5) * 2);
   });
 }
-function harmonizeAudioPalette(colours) {
-  const useful = colours.filter((colour) => screenLuma(colour) > 12).map((colour) => {
-    const hsv = rgbToHsv(colour);
-    return { colour, hue: hsv[0], saturation: hsv[1], value: hsv[2], score: hsv[1] * .72 + hsv[2] * .28 };
+function rgbToOklab(colour) {
+  const [red, green, blue] = colour.map(srgbToLinear);
+  const light = Math.cbrt(.4122214708 * red + .5363325363 * green + .0514459929 * blue);
+  const medium = Math.cbrt(.2119034982 * red + .6806995451 * green + .1073969566 * blue);
+  const short = Math.cbrt(.0883024619 * red + .2817188376 * green + .6299787005 * blue);
+  return [
+    .2104542553 * light + .793617785 * medium - .0040720468 * short,
+    1.9779984951 * light - 2.428592205 * medium + .4505937099 * short,
+    .0259040371 * light + .7827717662 * medium - .808675766 * short,
+  ];
+}
+function oklabDistance(first, second) {
+  return first.reduce((sum, value, index) => sum + (value - second[index]) ** 2, 0);
+}
+function limitedHue(base, candidate, maximumShift) {
+  const delta = ((candidate - base + .5) % 1 + 1) % 1 - .5;
+  return (base + clamp(delta, -maximumShift, maximumShift) + 1) % 1;
+}
+function harmonizedOpticalPalette(colours, weights = null) {
+  const palette = colours.slice(0, 3).map((colour) => [...colour]);
+  while (palette.length < 3) palette.push(palette.length ? [...palette.at(-1)] : [112, 42, 255]);
+  const sourceWeights = weights ? [...weights] : palette.map(() => 1);
+  while (sourceWeights.length < palette.length) sourceWeights.push(1);
+  const hsl = palette.map(rgbToHsl);
+  const chromatic = hsl.map((value, index) => value[2] >= .12 ? index : -1).filter((index) => index >= 0);
+  if (!chromatic.length) return [[34, 34, 34], [92, 92, 92], [190, 190, 190]];
+
+  const totalWeight = Math.max(1e-6, sourceWeights.reduce((sum, value) => sum + value, 0));
+  const centreIndex = chromatic.reduce((best, index) => {
+    const score = sourceWeights[index] / totalWeight * (.55 + hsl[index][2] * .75)
+      * (.72 + (1 - Math.abs(hsl[index][1] - .5) * 2) * .28);
+    return score > best.score ? { index, score } : best;
+  }, { index: chromatic[0], score: -Infinity }).index;
+  const ordered = [...chromatic].sort((first, second) => {
+    const firstScore = (first === centreIndex ? 1 : 0) * 1e6 + sourceWeights[first] * (.45 + hsl[first][2]);
+    const secondScore = (second === centreIndex ? 1 : 0) * 1e6 + sourceWeights[second] * (.45 + hsl[second][2]);
+    return secondScore - firstScore;
   });
-  if (!useful.length) return AUDIO_PALETTES.sapphire.map(hexToRgb);
-  const anchor = useful.reduce((best, item) => item.score > best.score ? item : best, useful[0]);
-  const hueDelta = (first, second) => ((second - first + .5) % 1) - .5;
-  const candidates = useful.sort((first, second) => second.score - first.score);
-  const shoulder = candidates.find((item) => Math.abs(hueDelta(anchor.hue, item.hue)) > .025) || anchor;
-  const outer = candidates.find((item) => item !== shoulder && Math.abs(hueDelta(anchor.hue, item.hue)) > .04) || shoulder;
-  const make = (source, maxShift, saturation, value) => hsvToRgb([
-    (anchor.hue + clamp(hueDelta(anchor.hue, source.hue), -maxShift, maxShift) + 1) % 1,
-    clamp(Math.max(saturation, source.saturation * .86), .42, .90), value,
-  ]);
-  return [make(outer, 20 / 360, .56, .24), make(shoulder, 32 / 360, .62, .43), make(anchor, 0, .68, .64)];
+  const shoulderIndex = ordered.find((index) => index !== centreIndex) ?? centreIndex;
+  const outerIndex = ordered.find((index) => index !== centreIndex && index !== shoulderIndex) ?? shoulderIndex;
+  const centreHue = hsl[centreIndex][0];
+  const shoulderHue = limitedHue(centreHue, hsl[shoulderIndex][0], 32 / 360);
+  const outerHue = limitedHue(centreHue, hsl[outerIndex][0], 20 / 360);
+  const weightedLightness = hsl.reduce((sum, value, index) => sum + value[1] * sourceWeights[index], 0) / totalWeight;
+  const centreLightness = clamp(.57 + weightedLightness * .12, .59, .67);
+  const shoulderLightness = centreLightness - .24;
+  const outerLightness = shoulderLightness - .17;
+  const usefulSaturations = chromatic.map((index) => hsl[index][2]);
+  const sourceSaturation = usefulSaturations.reduce((sum, value) => sum + value, 0) / usefulSaturations.length;
+  const centreSaturation = clamp(sourceSaturation * .95, .54, .90);
+  const shoulderSaturation = clamp((centreSaturation + hsl[shoulderIndex][2]) * .5, .48, .88);
+  const outerSaturation = clamp((shoulderSaturation + hsl[outerIndex][2]) * .5, .42, .84);
+  return [
+    hslToRgb([outerHue, outerLightness, outerSaturation]),
+    hslToRgb([shoulderHue, shoulderLightness, shoulderSaturation]),
+    hslToRgb([centreHue, centreLightness, centreSaturation]),
+  ];
+}
+function threeColourPalette(colours, previous = null) {
+  const samples = colours.map((raw) => raw.map((channel) => clamp(Math.round(channel), 0, 255))).flatMap((colour) => {
+    const [red, green, blue] = colour.map((channel) => channel / 255);
+    const value = Math.max(red, green, blue);
+    const saturation = value <= 0 ? 0 : (value - Math.min(red, green, blue)) / value;
+    const luminance = .2126 * red + .7152 * green + .0722 * blue;
+    if (luminance <= .018) return [];
+    const weight = (.35 + saturation * .65) * (.55 + Math.min(1, value * 1.35) * .45);
+    return [{ colour, lab: rgbToOklab(colour), weight }];
+  });
+  if (!samples.length) return previous?.length === 3 ? previous.map((colour) => [...colour]) : harmonizedOpticalPalette(AUDIO_PALETTES.sapphire.map(hexToRgb));
+
+  const first = samples.reduce((best, sample) => {
+    const score = sample.weight * (.6 + Math.hypot(sample.lab[1], sample.lab[2]) * 4);
+    return score > best.score ? { sample, score } : best;
+  }, { sample: samples[0], score: -Infinity }).sample;
+  const centroids = [[...first.lab]];
+  while (centroids.length < 3) {
+    const next = samples.reduce((best, sample) => {
+      const score = Math.min(...centroids.map((centroid) => oklabDistance(sample.lab, centroid))) * sample.weight;
+      return score > best.score ? { sample, score } : best;
+    }, { sample: samples[0], score: -Infinity }).sample;
+    centroids.push([...next.lab]);
+  }
+  let groups = [];
+  for (let iteration = 0; iteration < 8; iteration++) {
+    groups = centroids.map(() => []);
+    for (const sample of samples) {
+      const selected = centroids.reduce((best, centroid, index) => {
+        const distance = oklabDistance(sample.lab, centroid);
+        return distance < best.distance ? { index, distance } : best;
+      }, { index: 0, distance: Infinity }).index;
+      groups[selected].push(sample);
+    }
+    groups.forEach((group, index) => {
+      if (!group.length) return;
+      const total = group.reduce((sum, sample) => sum + sample.weight, 0);
+      centroids[index] = [0, 1, 2].map((channel) => group.reduce((sum, sample) => sum + sample.lab[channel] * sample.weight, 0) / total);
+    });
+  }
+  const palette = groups.map((group, index) => {
+    if (!group.length) return [...samples[index % samples.length].colour];
+    const total = group.reduce((sum, sample) => sum + sample.weight, 0);
+    return [0, 1, 2].map((channel) => Math.round(group.reduce((sum, sample) => sum + sample.colour[channel] * sample.weight, 0) / total));
+  });
+  const weights = groups.map((group) => group.reduce((sum, sample) => sum + sample.weight, 0));
+  return harmonizedOpticalPalette(palette, weights);
 }
 function screenLuma(colour) {
   return .2126 * colour[0] + .7152 * colour[1] + .0722 * colour[2];
@@ -563,6 +651,7 @@ function resetAudioVideoProcessor() {
   audioVideoBlackStreak = 0;
   state.audioVideoColours = null;
   state.audioVideoPalette = null;
+  state.audioScreenPalette = null;
   state.screenVideoColours = null;
   state.screenPaletteSamples = null;
   screenLastVideoSample = 0;
@@ -619,8 +708,12 @@ function sampleGameplayVideoColours(video) {
 }
 function sampleAudioVideoColours(video) {
   const colours = sampleGameplayVideoColours(video);
-  const palette = harmonizeAudioPalette(state.screenPaletteSamples || colours);
-  state.audioVideoPalette = palette;
+  const palette = threeColourPalette(state.screenPaletteSamples || colours, state.audioScreenPalette);
+  state.audioScreenPalette = palette;
+  if (!state.audioVideoPalette) state.audioVideoPalette = palette.map((colour) => [...colour]);
+  else state.audioVideoPalette = palette.map((colour, index) => colour.map((channel, offset) => Math.round(
+    state.audioVideoPalette[index][offset] + (channel - state.audioVideoPalette[index][offset]) * .18,
+  )));
   if (!state.audioArtworkPalette) state.audioArtworkPalette = palette.map((colour) => [...colour]);
   return audioPaletteFrame();
 }
@@ -678,6 +771,18 @@ function updateAudioBands() {
     const output = $(`#audioMetric${name[0].toUpperCase()}${name.slice(1)}`);
     if (output) output.textContent = name === "window" ? `${value.toFixed(1)} s` : `${Math.round(value * 100)}%`;
   }
+  const dynamicPalette = state.audioSyncPalette === "screen-sync"
+    ? state.audioVideoPalette
+    : state.audioSyncPalette === "artwork" ? state.audioArtworkPalette : null;
+  $("#audioLivePalette").hidden = !dynamicPalette;
+  if (dynamicPalette) {
+    dynamicPalette.forEach((colour, index) => {
+      const swatch = $(`#audioLivePalette${index}`);
+      swatch.style.setProperty("--swatch", rgbToHex(colour));
+      swatch.querySelector("b").textContent = rgbToHex(colour).toUpperCase();
+    });
+    $("#audioLivePaletteSource").textContent = state.audioSyncPalette === "screen-sync" ? "LIVE SCREEN PALETTE" : "CAPTURED ARTWORK PALETTE";
+  }
 }
 function decayAudioAnalysis() {
   const [, decay] = AUDIO_SMOOTHING[state.audioSyncReactivity] || AUDIO_SMOOTHING.balanced;
@@ -692,28 +797,44 @@ function audioPercentile(values, amount) {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.round((sorted.length - 1) * amount)];
 }
+function readDecodedAudioWindow(buffer, currentTime) {
+  if (!buffer || !Number.isFinite(currentTime)) return false;
+  const targetRate = 48000;
+  const frameDuration = audioLeftData.length / targetRate;
+  const startTime = currentTime - frameDuration;
+  const left = buffer.getChannelData(0);
+  const right = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : left;
+  const copyChannel = (source, destination) => {
+    for (let index = 0; index < destination.length; index++) {
+      const sourcePosition = (startTime + index / targetRate) * buffer.sampleRate;
+      if (sourcePosition < 0 || sourcePosition >= source.length - 1) {
+        destination[index] = 0;
+        continue;
+      }
+      const before = Math.floor(sourcePosition);
+      const fraction = sourcePosition - before;
+      destination[index] = source[before] + (source[before + 1] - source[before]) * fraction;
+    }
+  };
+  copyChannel(left, audioLeftData);
+  copyChannel(right, audioRightData);
+  return true;
+}
 function analyseAudioNow() {
   const video = $("#audioSyncVideo");
   const now = performance.now();
   const processInterval = 60;
-  if (!audioLeftAnalyser || !audioRightAnalyser || !audioLeftData || !audioRightData || video.paused || video.ended) {
+  if (!audioDecodedBuffer || video.paused || video.ended) {
     if (now - audioLastAnalysis >= processInterval) {
       audioLastAnalysis = now;
       decayAudioAnalysis();
     }
     return;
   }
-  const captureInterval = 60;
-  const captured = now - audioLastCapture >= captureInterval;
-  if (captured) {
-    audioLastCapture = now;
-    audioLeftAnalyser.getFloatTimeDomainData(audioLeftData);
-    audioRightAnalyser.getFloatTimeDomainData(audioRightData);
-  }
-  if (!captured || now - audioLastAnalysis < processInterval) return;
+  if (now - audioLastAnalysis < processInterval || !readDecodedAudioWindow(audioDecodedBuffer, video.currentTime)) return;
   audioLastAnalysis = now;
   const magnitudes = audioFftMagnitudes(audioLeftData, audioRightData);
-  const sampleRate = audioContext.sampleRate;
+  const sampleRate = 48000;
   const minimumHz = 45, maximumHz = Math.min(16000, sampleRate / 2 - 1);
   const rawDb = Array.from({ length: 17 }, (_, index) => {
     const low = minimumHz * ((maximumHz / minimumHz) ** (index / 17));
@@ -1592,10 +1713,10 @@ function syncAudioPlaybackUI() {
   const example = AUDIO_EXAMPLES[state.audioSyncExample];
   const duration = Number.isFinite(video.duration) ? formatTime(video.duration) : "0:00";
   const position = Number.isFinite(video.currentTime) ? formatTime(video.currentTime) : "0:00";
-  $("#audioSyncState").textContent = video.error ? "Video unavailable" : video.paused ? "Ready" : "Analysing live audio";
+  $("#audioSyncState").textContent = video.error ? "Video unavailable" : video.paused ? "Ready" : audioDecodedBuffer ? "Analysing source audio" : "Loading independent audio analysis";
   $("#audioSyncTime").textContent = video.error
     ? "The local gameplay file could not be decoded"
-    : video.paused ? `${example.title} · ${position} / ${duration} · playback paused` : `${example.title} · ${position} / ${duration} · ${Math.round((audioContext?.sampleRate || 48000) / 1000)} kHz decoded locally`;
+    : video.paused ? `${example.title} · ${position} / ${duration} · playback paused` : `${example.title} · ${position} / ${duration} · ${Math.round((audioDecodedBuffer?.sampleRate || 48000) / 1000)} kHz source PCM · player volume independent`;
   $("#audioSyncPlay").textContent = video.paused ? "Play Audio Sync" : "Pause Audio Sync";
   if (state.tab === "audio-sync") {
     $("#pauseDemo").textContent = video.paused ? "▶" : "Ⅱ";
@@ -1619,6 +1740,9 @@ function selectGameplayExample(key) {
   state.audioLastImpact = 0; state.audioLastPulse = -10; state.audioLastHifiCrest = -10; state.audioHueShift = 0; state.audioHueTarget = 0;
   state.audioMetrics = { impact: 0, attack: 0, texture: 0, stereo: 0, window: 0 };
   resetAudioVideoProcessor();
+  audioDecodedBuffer = null;
+  audioDecodedSource = "";
+  audioDecodePromise = null;
   video.src = example.source;
   video.setAttribute("aria-label", `${example.title} gameplay used for the Audio Sync and Screen Sync demonstrations`);
   video.load();
@@ -1630,37 +1754,39 @@ function selectGameplayExample(key) {
 async function ensureAudioGraph() {
   const Context = window.AudioContext || window.webkitAudioContext;
   if (!Context) throw new Error("Web Audio is unavailable in this browser");
-  if (!audioContext) {
-    const video = $("#audioSyncVideo");
-    audioContext = new Context({ sampleRate: 48000 });
-    audioMediaSource = audioContext.createMediaElementSource(video);
-    const splitter = audioContext.createChannelSplitter(2);
-    audioLeftAnalyser = audioContext.createAnalyser();
-    audioRightAnalyser = audioContext.createAnalyser();
-    audioLeftAnalyser.fftSize = 2048;
-    audioRightAnalyser.fftSize = 2048;
-    audioLeftAnalyser.smoothingTimeConstant = 0;
-    audioRightAnalyser.smoothingTimeConstant = 0;
-    const silent = audioContext.createGain();
-    silent.gain.value = 0;
-    audioMediaSource.connect(audioContext.destination);
-    audioMediaSource.connect(splitter);
-    splitter.connect(audioLeftAnalyser, 0);
-    splitter.connect(audioRightAnalyser, 1);
-    audioLeftAnalyser.connect(silent);
-    audioRightAnalyser.connect(silent);
-    silent.connect(audioContext.destination);
-    audioLeftData = new Float32Array(audioLeftAnalyser.fftSize);
-    audioRightData = new Float32Array(audioRightAnalyser.fftSize);
+  if (!audioContext) audioContext = new Context({ sampleRate: 48000 });
+  const video = $("#audioSyncVideo");
+  const source = video.currentSrc || new URL(video.getAttribute("src"), document.baseURI).href;
+  if (audioDecodedBuffer && audioDecodedSource === source) return;
+  if (audioDecodePromise && audioDecodedSource === source) return audioDecodePromise;
+  audioDecodedSource = source;
+  audioDecodedBuffer = null;
+  const pending = fetch(source, { cache: "force-cache" })
+    .then((response) => {
+      if (!response.ok) throw new Error(`Audio source request failed (${response.status})`);
+      return response.arrayBuffer();
+    })
+    .then((encoded) => audioContext.decodeAudioData(encoded))
+    .then((decoded) => {
+      if (audioDecodedSource === source) audioDecodedBuffer = decoded;
+      return decoded;
+    });
+  audioDecodePromise = pending;
+  try {
+    await pending;
+  } finally {
+    if (audioDecodedSource === source) audioDecodePromise = null;
   }
-  if (audioContext.state === "suspended") await audioContext.resume();
 }
 async function toggleAudioPlayback() {
   const video = $("#audioSyncVideo");
   try {
-    await ensureAudioGraph();
-    if (video.paused) await video.play();
-    else video.pause();
+    if (video.paused) {
+      const playback = video.play();
+      const analysis = ensureAudioGraph();
+      await playback;
+      await analysis;
+    } else video.pause();
   } catch (error) {
     $("#audioSyncState").textContent = "Audio analysis unavailable";
     $("#audioSyncTime").textContent = error instanceof Error ? error.message : String(error);

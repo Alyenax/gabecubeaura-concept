@@ -281,7 +281,23 @@ try {
   await page.locator("#audioSyncPlay").click();
   await page.waitForFunction(() => document.querySelector("#providerBadge")?.textContent === "LIVE AUDIO", null, { timeout: 5000 });
   await page.waitForFunction(() => [...document.querySelectorAll("#logicalLeds i")].some((led) => getComputedStyle(led).backgroundColor !== "rgb(51, 69, 78)"), null, { timeout: 5000 });
-  assert.match(await page.locator("#audioSyncState").textContent(), /Analysing live audio/);
+  await page.waitForFunction(() => document.querySelector("#audioSyncState")?.textContent === "Analysing source audio", null, { timeout: 15000 });
+  assert.match(await page.locator("#audioSyncTime").textContent(), /player volume independent/);
+  const volumeIndependent = await page.evaluate(() => {
+    const video = document.querySelector("#audioSyncVideo");
+    video.volume = 1;
+    readDecodedAudioWindow(audioDecodedBuffer, 12);
+    const fullVolume = audioRms(audioLeftData);
+    video.volume = .01;
+    video.muted = true;
+    readDecodedAudioWindow(audioDecodedBuffer, 12);
+    const quietMuted = audioRms(audioLeftData);
+    video.volume = 1;
+    video.muted = false;
+    return { fullVolume, quietMuted };
+  });
+  assert.ok(volumeIndependent.fullVolume > 0, "decoded source window should contain audio");
+  assert.ok(Math.abs(volumeIndependent.fullVolume - volumeIndependent.quietMuted) < 1e-10, `player volume leaked into analysis: ${JSON.stringify(volumeIndependent)}`);
   for (const style of ["spectrum", "audio-pulse", "bass", "constellation", "hifi-crest", "negative-bloom", "slow-prism", "spatial", "stereo-lanterns", "velvet-relay"]) {
     await page.locator("#audioSyncStyle").selectOption(style);
     await page.waitForTimeout(180);
@@ -291,6 +307,15 @@ try {
   await page.locator("#audioSyncPalette").selectOption("screen-sync");
   assert.match(await page.locator("#audioSyncPaletteHelp").textContent(), /three coherent colours/);
   await page.waitForTimeout(500);
+  assert.equal(await page.locator("#audioLivePalette").isVisible(), true);
+  const livePalette = await page.locator("#audioLivePalette span b").allTextContents();
+  assert.equal(livePalette.length, 3);
+  assert.equal(livePalette.every((colour) => /^#[0-9A-F]{6}$/.test(colour) && !["#000000", "#FFFFFF"].includes(colour)), true);
+  assert.equal(new Set(livePalette).size, 3, `live Screen Sync palette lacks optical role separation: ${livePalette.join(", ")}`);
+  await page.locator("#audioSyncVideo").evaluate((video) => { video.currentTime = 60; });
+  await page.waitForTimeout(1200);
+  const laterLivePalette = await page.locator("#audioLivePalette span b").allTextContents();
+  assert.ok(laterLivePalette.some((colour, index) => colour !== livePalette[index]), `Screen Sync palette did not follow a later gameplay frame: ${laterLivePalette.join(", ")}`);
   assert.match(await page.locator("#signalReadout").textContent(), /SCREEN SYNC/);
   assert.match(await page.locator("#stageExplain").textContent(), /adaptive 10\.2-second/);
   const screenPulseColours = await page.locator("#logicalLeds i").evaluateAll((leds) => leds.map((led) => getComputedStyle(led).backgroundColor));
