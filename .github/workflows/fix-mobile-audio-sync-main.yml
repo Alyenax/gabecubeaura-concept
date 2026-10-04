@@ -1,14 +1,14 @@
 name: Build mobile Audio Sync fix
 
 on:
-  push:
+  pull_request:
     branches:
       - main
-    paths:
-      - .github/workflows/fix-mobile-audio-sync-main.yml
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   build-and-verify:
@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -44,11 +44,16 @@ jobs:
           print('audio-analysis.js sanity check:', len(text), 'bytes')
           PY
 
-      - name: Commit verified fix and remove one-shot workflow
+      - name: Commit verified fix to the PR branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/fix-mobile-audio-sync-main.yml
+          git rm --ignore-unmatch .github/workflows/fix-mobile-audio-sync-main.yml
+          git rm --ignore-unmatch .audio-sync-build-request
           git add app.js audio-analysis.js index.html audio-sync/index.html tools/generate_audio_analysis.py
+          if git diff --cached --quiet; then
+            echo "Generated output is already up to date."
+            exit 0
+          fi
           git commit -m "Fix mobile Audio Sync with precomputed analysis"
-          git push origin HEAD:main
+          git push origin HEAD:${{ github.head_ref }}
