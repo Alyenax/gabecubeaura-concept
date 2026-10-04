@@ -1,269 +1,38 @@
 <!doctype html>
-<!-- Keep this entry in sync with ../index.html. Its head, base URL and fragment links are route-specific. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <base href="../">
-  <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'">
   <meta name="theme-color" content="#0c131b">
   <meta name="description" content="See GabeCubeAura Audio Sync on a simulated 17-pixel Steam Machine light bar, preloaded with Silksong, Slow Prism and Screen Sync colours.">
-  <meta property="og:title" content="GabeCubeAura Audio Sync · Concept Lab">
-  <meta property="og:description" content="Silksong gameplay, Slow Prism choreography and live Screen Sync colours on a simulated Steam Machine light bar.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://alyenax.github.io/gabecubeaura-concept/audio-sync/">
   <title>Audio Sync · GabeCubeAura Concept Lab</title>
   <link rel="canonical" href="https://alyenax.github.io/gabecubeaura-concept/audio-sync/">
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
-  <script src="event-frames.js" defer></script>
-  <script src="weather-frames.js" defer></script>
-  <script src="app.js" defer></script>
 </head>
-<body>
-  <header class="site-header">
-    <a class="brand" href="audio-sync/#top" aria-label="GabeCubeAura Concept Lab home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span>GabeCubeAura <em>Concept Lab</em></span></a>
-    <nav class="header-links" aria-label="Project links">
-      <a href="https://github.com/Alyenax/GabeCubeAura" target="_blank" rel="noopener noreferrer">GitHub</a>
-      <a href="https://github.com/Alyenax/GabeCubeAura/releases/latest" target="_blank" rel="noopener noreferrer" class="header-download">Get GabeCubeAura ↗</a>
-    </nav>
-  </header>
-
-  <main id="top">
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="eyebrow"><span class="eyebrow-dot"></span> INTERACTIVE PRODUCT PREVIEW</p>
-        <h1 id="hero-title">What could your <span>light bar</span> tell you?</h1>
-        <p class="hero-lead">Build a permanent scene with Customization+, sample game artwork, or let real gameplay audio drive all 17 LEDs. Then explore Screen Sync, the experimental Witcher 3 HUD, performance, playtime, Steam moments, four controllers and Weather.</p>
-        <div class="hero-actions"><a class="button primary" href="audio-sync/#lab">Open the simulator <span aria-hidden="true">↘</span></a><a class="button ghost" href="https://github.com/Alyenax/GabeCubeAura#readme" target="_blank" rel="noopener noreferrer">Read the project ↗</a></div>
-        <p class="hero-note"><strong>GabeCubeAura 1.3.2 Lab preview.</strong> Audio Sync and Screen Sync process the bundled gameplay locally. They do not connect to Steam, PipeWire or hardware.</p>
-      </div>
-      <div class="hero-art" aria-hidden="true"><div class="hero-cube"><div class="hero-cube-face"></div><div class="hero-led"></div><div class="hero-base"><b></b><b></b><b></b><span></span></div></div><div class="hero-caption">17 PIXELS · ONE SIGNAL AT A TIME</div></div>
-    </section>
-
-    <section class="intro-strip" aria-label="Available simulations">
-      <span>PLAY WITH</span><strong>Audio Sync</strong><strong>Screen Sync</strong><strong>Witcher 3 Lab</strong><strong>Customization+</strong><strong>Game launches</strong><strong>Artwork</strong><strong>CPU + GPU</strong><strong>Countdowns</strong><strong>Light events</strong><strong>4 Controllers</strong><strong>Weather</strong>
-    </section>
-
-    <section class="lab-section" id="lab" aria-labelledby="lab-title">
-      <div class="section-heading"><div><p class="eyebrow">THE SIMULATOR</p><h2 id="lab-title">Make it yours. See it live.</h2></div><p>Every control is a sample input. Nothing is sent anywhere; Reset restores the starting values.</p></div>
-      <div class="workbench">
-        <div class="settings-shell">
-          <div class="settings-header"><span class="settings-icon" aria-hidden="true">✦</span><div><strong>GabeCubeAura</strong><small>1.3.2 Lab · interactive settings</small></div><span class="mock-badge">LOCAL MEDIA</span></div>
-          <nav class="tab-list" aria-label="GabeCubeAura features">
-            <button class="tab active" data-tab="overview" aria-selected="true"><span>◎</span> Explore</button>
-            <button class="tab" data-tab="customization" aria-selected="false"><span>✣</span> Customization+</button>
-            <button class="tab" data-tab="artwork" aria-selected="false"><span>▧</span> Artwork</button>
-            <button class="tab" data-tab="performance" aria-selected="false"><span>◫</span> Performance</button>
-            <button class="tab" data-tab="launches" aria-selected="false"><span>↗</span> Game launches</button>
-            <button class="tab" data-tab="playtime" aria-selected="false"><span>◴</span> Playtime</button>
-            <button class="tab" data-tab="events" aria-selected="false"><span>✧</span> Light events</button>
-            <button class="tab" data-tab="controllers" aria-selected="false"><span>⌁</span> Controllers</button>
-            <button class="tab" data-tab="weather" aria-selected="false"><span>☀</span> Weather</button>
-            <button class="tab" data-tab="audio-sync" aria-selected="false"><span>≋</span> Audio Sync</button>
-            <button class="tab" data-tab="screen-sync" aria-selected="false"><span>▥</span> Screen Sync</button>
-            <button class="tab" data-tab="witcher" aria-selected="false"><span>⚔</span> Witcher 3 Lab</button>
-            <button class="tab" data-tab="priorities" aria-selected="false"><span>≡</span> Priorities</button>
-          </nav>
-
-          <div class="settings-content">
-            <section class="pane active" data-pane="overview" aria-labelledby="overview-heading">
-              <div class="pane-head"><p class="eyebrow">START HERE</p><h3 id="overview-heading">A signal for every moment.</h3><p>Pick a scenario, then open its controls to experiment.</p></div>
-              <div class="scene-grid">
-                <button class="scene-card" data-preset="customization"><span class="scene-icon cyan">✣</span><strong>Customization+</strong><small>61 effects, exact colours and speed</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="launches"><span class="scene-icon gold">↗</span><strong>Game launch</strong><small>Artwork colours for a timed entrance</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="artwork"><span class="scene-icon violet">▧</span><strong>Game artwork</strong><small>Sample a game's colour palette</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="performance"><span class="scene-icon cyan">◫</span><strong>CPU + GPU</strong><small>Two temperature-aware meters</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="playtime"><span class="scene-icon amber">◴</span><strong>Time remaining</strong><small>Steam Families or your own timer</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="controllers"><span class="scene-icon green">⌁</span><strong>Up to four controllers</strong><small>Fixed-seat battery gauges</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="audio-sync"><span class="scene-icon violet">≋</span><strong>Audio Sync</strong><small>Real gameplay audio across 17 bands</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="screen-sync"><span class="scene-icon blue">▥</span><strong>Screen Sync</strong><small>Gamescope colours across 17 LEDs</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="witcher"><span class="scene-icon amber">⚔</span><strong>Witcher 3 Lab</strong><small>Experimental vitality and stamina HUD</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="weather"><span class="scene-icon amber">☀</span><strong>Local weather</strong><small>Eighteen loops for eight sky conditions</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="notification"><span class="scene-icon blue">✧</span><strong>Notification</strong><small>A short signal, then back to normal</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="achievement"><span class="scene-icon gold">✦</span><strong>Achievement</strong><small>Give a win its own celebration</small><span class="scene-arrow">↗</span></button>
-              </div>
-              <div class="callout"><strong>Built from GabeCubeAura's current library.</strong><p>The event and Weather sequences are sampled from the plugin renderers; Customization+ reuses their choreography. Launch patterns and the physical glow are browser simulations.</p></div>
-            </section>
-
-            <section class="pane" data-pane="customization" aria-labelledby="customization-heading">
-              <div class="pane-head"><p class="eyebrow">PERMANENT DISPLAY · 61 EFFECTS</p><h3 id="customization-heading">Your colours. Your rhythm.</h3><p>Choose a proven movement from Light Events, Controllers, Weather or Game Launches, then remap it to one, two or three precise colours.</p></div>
-              <label class="field">Pattern<select id="customPattern"></select></label>
-              <div class="form-grid"><label class="field">Palette<select id="customPaletteCount"><option value="1">1 colour</option><option value="2" selected>2 colours</option><option value="3">3 colours</option></select></label><label class="field">Direction<select id="customDirection"><option value="forward">Left to right</option><option value="reverse">Right to left</option></select></label></div>
-              <div class="precise-colours" id="customizationColours" aria-label="Customization colours">
-                <label><span>Colour 1</span><input type="color" id="customColour1" value="#ffd000"><input type="text" id="customHex1" value="#FFD000" maxlength="7" aria-label="Colour 1 hexadecimal"></label>
-                <label data-custom-colour="2"><span>Colour 2</span><input type="color" id="customColour2" value="#00c8ff"><input type="text" id="customHex2" value="#00C8FF" maxlength="7" aria-label="Colour 2 hexadecimal"></label>
-                <label data-custom-colour="3" hidden><span>Colour 3</span><input type="color" id="customColour3" value="#ff3c9d"><input type="text" id="customHex3" value="#FF3C9D" maxlength="7" aria-label="Colour 3 hexadecimal"></label>
-              </div>
-              <label class="slider-field" for="customBrightness"><span>Raw brightness <output id="customBrightnessValue">128 / 255</output></span><input id="customBrightness" type="range" min="34" max="255" step="1" value="128"></label>
-              <label class="slider-field" for="customSpeed"><span>Speed <output id="customSpeedValue">50 / 100</output></span><input id="customSpeed" type="range" min="1" max="100" step="1" value="50"></label>
-              <div class="button-row"><button class="button primary" id="customPreview">Preview Customization+</button></div>
-              <div class="callout compact"><strong>Steam's native effects stay in Steam.</strong><p>Patrol, Breathe, Rainbow and Solid are not imitated here. Choose <b>GabeCubeAura Off</b> in the real plugin to keep Valve's authentic effect between temporary GabeCubeAura signals.</p></div>
-            </section>
-
-            <section class="pane" data-pane="artwork" aria-labelledby="artwork-heading">
-              <div class="pane-head"><p class="eyebrow">EVERYDAY DISPLAY / 01</p><h3 id="artwork-heading">A game's colours, on the machine.</h3><p>Choose a game or use your own image. Move the red line to pick the row sampled into 17 colours.</p></div>
-              <div class="control-group"><span class="group-label">SAMPLE GAME</span><div class="segmented" role="group" aria-label="Sample game"><button data-game="drg" class="selected">Deep Rock</button><button data-game="witcher">The Witcher 3</button><button data-game="balatro">Balatro</button></div></div>
-              <div class="form-grid"><label class="field">Steam image<select id="artSource"><option value="hero">Library Hero</option><option value="header">Library Header</option><option value="capsule">Library Capsule</option></select></label><label class="field">Sample row<select id="artMode"><option value="auto">Auto (best row)</option><option value="manual" selected>Manual</option><option value="center">Centre</option><option value="lower">Lower</option></select></label></div>
-              <label class="field">Display for this game<select id="gameDisplay"><option value="inherit">Use global choice</option><option value="customization">Always Customization+</option><option value="artwork">Always Artwork</option><option value="performance">Always Performance</option><option value="disabled">GabeCubeAura Off</option></select></label>
-              <label class="slider-field" for="artRow"><span>Vertical position <output id="artRowValue">59%</output></span><input id="artRow" type="range" min="0" max="100" value="59"></label>
-              <div class="art-preview"><div class="art-image-wrap"><img id="artImage" alt="Sample game artwork" src="assets/drg-hero.jpg"><span id="sampleLine"></span></div><div class="art-preview-foot"><strong id="artTitle">Deep Rock Galactic</strong><span id="artTypeLabel">Library Hero · row 59%</span></div></div>
-              <label class="upload-button">Try your own image <input id="artUpload" type="file" accept="image/*"><span>Choose file ↗</span></label><p class="field-help">Your image stays on this device. Nothing is uploaded. The real plugin uses locally installed Steam artwork, including SteamGridDB replacements.</p>
-            </section>
-
-            <section class="pane" data-pane="launches" aria-labelledby="launches-heading">
-              <div class="pane-head"><p class="eyebrow">TEMPORARY LAYER · PER APPID</p><h3 id="launches-heading">Give every game an entrance.</h3><p>Detect the running Steam AppID, take two or three dominant colours from its local artwork, and play a timed animation before the normal display returns.</p></div>
-              <div class="control-group"><span class="group-label">SAMPLE APPID</span><div class="segmented" role="group" aria-label="Launch sample game"><button data-launch-game="drg" class="selected">548430 · Deep Rock</button><button data-launch-game="witcher">292030 · Witcher 3</button><button data-launch-game="balatro">2379780 · Balatro</button></div></div>
-              <div class="form-grid"><label class="field">Artwork image<select id="launchSource"><option value="hero">Library Hero</option><option value="header">Library Header</option><option value="capsule">Library Capsule</option></select></label><label class="field">Palette source<select id="launchPaletteMode"><option value="artwork">From artwork</option><option value="custom">Custom for this AppID</option></select></label></div>
-              <div class="form-grid"><label class="field">Number of colours<select id="launchColourCount"><option value="2" selected>2 dominant colours</option><option value="3">3 dominant colours</option></select></label><label class="field">Pattern<select id="launchPattern"></select></label></div>
-              <div class="precise-colours" id="launchCustomColours" hidden aria-label="Custom launch colours">
-                <label><span>Launch colour 1</span><input type="color" id="launchColour1" value="#ffd000"><input type="text" id="launchHex1" value="#FFD000" maxlength="7" aria-label="Launch colour 1 hexadecimal"></label>
-                <label><span>Launch colour 2</span><input type="color" id="launchColour2" value="#00c8ff"><input type="text" id="launchHex2" value="#00C8FF" maxlength="7" aria-label="Launch colour 2 hexadecimal"></label>
-                <label data-launch-colour="3" hidden><span>Launch colour 3</span><input type="color" id="launchColour3" value="#ff3c9d"><input type="text" id="launchHex3" value="#FF3C9D" maxlength="7" aria-label="Launch colour 3 hexadecimal"></label>
-              </div>
-              <label class="slider-field" for="launchDuration"><span>Animation duration <output id="launchDurationValue">20 s</output></span><input id="launchDuration" type="range" min="3" max="45" step="1" value="20"></label>
-              <div class="button-row"><button class="button primary" id="launchPreview">Preview launch animation</button><span class="timer-pill" id="launchStatus">Ready · 20 s</span></div>
-              <div class="art-preview launch-preview"><div class="art-image-wrap"><img id="launchArtImage" alt="Artwork used for launch colour extraction" src="assets/drg-hero.jpg"></div><div class="art-preview-foot"><strong id="launchArtTitle">Deep Rock Galactic · AppID 548430</strong><span id="launchArtType">Library Hero · artwork palette</span></div></div>
-              <div class="dominant-palette" id="launchPalette" aria-label="Detected launch palette"></div>
-              <p class="palette-status" id="launchPaletteStatus" aria-live="polite">Analysing artwork colours…</p>
-              <p class="field-help">The real plugin reads installed Steam artwork, including SteamGridDB replacements, locally. Both the two- and three-colour custom palettes are retained separately for each AppID. Nothing is uploaded.</p>
-            </section>
-
-            <section class="pane" data-pane="performance" aria-labelledby="performance-heading">
-              <div class="pane-head"><p class="eyebrow">EVERYDAY DISPLAY / 02</p><h3 id="performance-heading">Make load visible.</h3><p>Length is CPU/GPU usage. Colour follows temperature. Try changing either value and watch the bar react.</p></div>
-              <div class="form-grid"><label class="field">Meter<select id="perfMetric"><option value="mixed">CPU + GPU</option><option value="cpu">CPU only</option><option value="gpu">GPU only</option></select></label><label class="field">Fill direction<select id="perfDirection"><option value="mirrored">Mirrored to centre</option><option value="same">Both left to right</option></select></label></div>
-              <label class="slider-field" for="cpuLoad"><span>CPU load <output id="cpuLoadValue">38%</output></span><input id="cpuLoad" type="range" min="0" max="100" value="38"></label>
-              <label class="slider-field" for="cpuTemp"><span>CPU temperature <output id="cpuTempValue">58°C</output></span><input id="cpuTemp" type="range" min="30" max="100" value="58"></label>
-              <label class="slider-field" for="gpuLoad"><span>GPU load <output id="gpuLoadValue">72%</output></span><input id="gpuLoad" type="range" min="0" max="100" value="72"></label>
-              <label class="slider-field" for="gpuTemp"><span>GPU temperature <output id="gpuTempValue">70°C</output></span><input id="gpuTemp" type="range" min="30" max="100" value="70"></label>
-              <div class="form-grid"><label class="field">Temperature palette<select id="perfPalette"><option value="classic">Green → yellow → red</option><option value="thermal">Cyan → amber → red</option><option value="icefire">Blue → violet → pink</option><option value="custom">My colours</option></select></label><label class="field">Response<select id="perfResponse"><option value="balanced">Balanced</option><option value="responsive">Responsive</option><option value="smooth">Smooth</option></select></label></div>
-              <div class="colour-row" id="customColours" hidden><label>Cool <input type="color" id="coolColor" value="#1eb4e6"></label><label>Middle <input type="color" id="middleColor" value="#f5b42d"></label><label>Hot <input type="color" id="hotColor" value="#eb2d37"></label></div>
-              <div class="form-grid"><label class="slider-field" for="coolTemp"><span>Cool at <output id="coolTempValue">45°C</output></span><input id="coolTemp" type="range" min="25" max="65" value="45"></label><label class="slider-field" for="hotTemp"><span>Hot at <output id="hotTempValue">78°C</output></span><input id="hotTemp" type="range" min="60" max="100" value="78"></label></div>
-              <label class="toggle-line"><input type="checkbox" id="perfHome" checked><span><strong>Keep Performance on Home</strong><small>Otherwise the meter runs only in a game.</small></span></label>
-            </section>
-
-            <section class="pane" data-pane="playtime" aria-labelledby="playtime-heading">
-              <div class="pane-head"><p class="eyebrow">TIME SIGNAL</p><h3 id="playtime-heading">Watch time run out.</h3><p>A Steam Families limit takes priority when a game runs. Or start a personal countdown without parental controls.</p></div>
-              <div class="segmented" role="group" aria-label="Countdown source"><button data-timer-source="families" class="selected">Steam Families</button><button data-timer-source="personal">Personal timer</button></div>
-              <div class="form-grid"><label class="field">Timer duration<select id="timerDuration"><option value="30">30 minutes</option><option value="60" selected>1 hour</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option></select></label><label class="field">Full bar represents<select id="timerScale"><option value="0">The full timer</option><option value="60">1 hour</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option></select></label></div>
-              <label class="slider-field" for="timerRemaining"><span>Time remaining <output id="timerRemainingValue">42:00</output></span><input id="timerRemaining" type="range" min="0" max="3600" step="1" value="2520"></label>
-              <div class="form-grid"><label class="field">Starting colour<select id="timerColor"><option value="white">White</option><option value="cyan">Cyan</option><option value="green">Green</option><option value="amber">Amber</option><option value="violet">Violet</option></select></label><label class="field">Demo speed<select id="timerSpeed"><option value="1">Real time</option><option value="10">10×</option><option value="60" selected>60×</option><option value="300">300×</option></select></label></div>
-              <div class="button-row"><button class="button primary" id="timerStart">Start countdown</button><button class="button ghost" id="timerStop">Stop</button><button class="button ghost" id="timerFinal">Jump to 8 seconds</button></div>
-              <div class="callout compact"><strong>At 15 min: amber. At 5 min: red.</strong><p>The highlight keeps travelling right to left. In the last eight seconds, three quick white flashes repeat until zero. No breathing effect.</p></div>
-            </section>
-
-            <section class="pane" data-pane="events" aria-labelledby="events-heading">
-              <div class="pane-head"><p class="eyebrow">SHORT LIGHT EVENTS</p><h3 id="events-heading">Small moments, a little magic.</h3><p>Each event temporarily takes the bar, then gives it back to the current display. Pick any available sequence and play it.</p></div>
-              <div class="segmented event-kinds" role="group" aria-label="Event type"><button data-event-kind="notification" class="selected">Notification</button><button data-event-kind="achievement">Achievement</button><button data-event-kind="screenshot">Screenshot</button><button data-event-kind="recording">Recording</button></div>
-              <div class="event-card"><div class="event-orbit" aria-hidden="true">✦</div><p class="eyebrow" id="eventEyebrow">NOTIFICATION</p><h4 id="eventName">Return beacon</h4><p id="eventDescription">The edges answer a centre beacon and return to it.</p></div>
-              <label class="field">Animation<select id="eventVariant"></select></label>
-              <div class="button-row"><button class="button primary" id="eventPlay">Play this signal</button><button class="button ghost" id="recordToggle">Start recording</button></div>
-              <label class="toggle-line" id="recordIsolationRow" hidden><input type="checkbox" id="recordIsolation" checked><span><strong>Isolate the red recording LED</strong><small>The two neighbouring pixels stay black while recording.</small></span></label>
-              <p class="field-help" id="recordingHelp" hidden>Recording's centre marker stays on over Artwork or Performance. It does not cover a countdown or another event.</p>
-            </section>
-
-            <section class="pane" data-pane="controllers" aria-labelledby="controllers-heading">
-              <div class="pane-head"><p class="eyebrow">CONTROLLER BATTERY</p><h3 id="controllers-heading">Up to four players. One glance.</h3><p>Choose one to four controllers, then preview the real gauge, connection, low-battery, charging and multiplayer patterns on the same 17 LEDs.</p></div>
-              <div class="form-grid"><label class="field">Connected controllers<select id="controllerCount"><option value="1">One controller</option><option value="2" selected>Two controllers</option><option value="3">Three controllers</option><option value="4">Four controllers</option></select></label><label class="field">Battery gauge<select id="controllerWhere"><option value="home" selected>On Home</option><option value="everywhere">Home + in game</option><option value="off">Off</option></select></label></div>
-              <label class="slider-field" data-controller-row="1" for="padOne"><span>Controller 1 <output id="padOneValue">96%</output></span><input id="padOne" type="range" min="0" max="100" value="96"></label>
-              <label class="slider-field" data-controller-row="2" for="padTwo"><span>Controller 2 <output id="padTwoValue">41%</output></span><input id="padTwo" type="range" min="0" max="100" value="41"></label>
-              <label class="slider-field" data-controller-row="3" for="padThree" hidden><span>Controller 3 <output id="padThreeValue">73%</output></span><input id="padThree" type="range" min="0" max="100" value="73"></label>
-              <label class="slider-field" data-controller-row="4" for="padFour" hidden><span>Controller 4 <output id="padFourValue">28%</output></span><input id="padFour" type="range" min="0" max="100" value="28"></label>
-              <div class="form-grid"><label class="field">Charging signal<select id="chargeMode"><option value="continuous-home" selected>Continuous on Home</option><option value="continuous-everywhere">Continuous everywhere</option><option value="brief">Brief, about 3 sec</option><option value="off">Off</option></select></label><label class="field">Brief alerts<select id="alertWhere"><option value="both" selected>Home + in game</option><option value="home">On Home</option><option value="game">In game</option><option value="off">Off</option></select></label></div>
-              <div class="form-grid"><label class="field">Visual situation<select id="controllerScene"><option value="duo">Multiple controllers</option><option value="gauge">Permanent gauge</option><option value="connect">Connection</option><option value="low">Low battery</option><option value="charging">Charging</option></select></label><label class="field">Animation<select id="controllerVariant"></select></label></div>
-              <div class="form-grid"><label class="field">Preview controller<select id="controllerTarget"><option value="0">Controller 1</option><option value="1" selected>Controller 2</option></select></label><label class="inline-check controller-charge-check"><input type="checkbox" id="padCharging"><span id="padChargingLabel">Controller 2 charging</span></label></div>
-              <div class="button-row"><button class="button primary" id="controllerPlay">Preview animation</button></div>
-              <label class="slider-field" for="lowThreshold"><span>Low-battery warning at <output id="lowThresholdValue">20%</output></span><input id="lowThreshold" type="range" min="5" max="40" value="20"></label>
-              <div class="control-group controller-colour-meaning"><span class="group-label">COLOUR MEANING</span><div class="segmented" id="controllerColourMode" role="group" aria-label="Controller colour meaning"><button type="button" class="selected" data-controller-colour-mode="battery" aria-pressed="true">Battery level</button><button type="button" data-controller-colour-mode="players" aria-pressed="false">Player seats</button></div><p class="field-help">Use one status palette for every controller, or give P1 to P4 a permanent seat colour.</p></div>
-              <label class="slider-field" for="padBrightness"><span>Controller brightness <output id="padBrightnessValue">65%</output></span><input id="padBrightness" type="range" min="10" max="100" value="65"></label>
-              <div class="colour-row" id="controllerBatteryColours"><label>Healthy <input type="color" id="padHealthy" value="#00b42d"></label><label>Medium <input type="color" id="padMedium" value="#e66e00"></label><label>Low <input type="color" id="padLow" value="#dc0c18"></label><label>Charge <input type="color" id="padCharge" value="#0091dc"></label></div>
-              <div class="colour-row" id="controllerPlayerColours" hidden><label>P1 <input type="color" id="padPlayerOne" value="#25c8f5"></label><label>P2 <input type="color" id="padPlayerTwo" value="#ffb43b"></label><label>P3 <input type="color" id="padPlayerThree" value="#a777ff"></label><label>P4 <input type="color" id="padPlayerFour" value="#4bd38a"></label></div>
-              <p class="field-help">Preview plays manually in either context. Connection, low-battery and charging animations target the selected controller. Multiplayer patterns use the same three choreographies for every active seat. Real battery data depends on what Steam reports for each controller.</p>
-            </section>
-
-            <section class="pane" data-pane="weather" aria-labelledby="weather-heading">
-              <div class="pane-head"><p class="eyebrow">LOCAL WEATHER</p><h3 id="weather-heading">A window into the sky.</h3><p>Try the sixteen LED loops for eight conditions. This sample is offline: the plugin asks you to choose a city before it requests live weather.</p></div>
-              <div class="form-grid"><label class="field">Sky condition<select id="weatherCondition"><option value="clear_day">Clear sky · sun</option><option value="clear_night">Clear sky · moon and stars</option><option value="rain">Rain</option><option value="cloud">Cloud</option><option value="breaks">Partly cloudy · day</option><option value="breaks_night">Partly cloudy · night</option><option value="snow">Snow</option><option value="storm">Thunderstorm</option></select></label><label class="field">Animation<select id="weatherVariant"></select></label></div>
-              <div class="form-grid"><label class="field">Permanent weather display<select id="weatherWhere"><option value="off">Off</option><option value="home" selected>On Home</option><option value="game">In game</option><option value="everywhere">Everywhere</option></select></label><label class="field">Top-bar temperature<select id="weatherUnit"><option value="celsius">Celsius · °C</option><option value="fahrenheit">Fahrenheit · °F</option></select></label></div>
-              <label class="toggle-line"><input type="checkbox" id="weatherTopbar"><span><strong>Experimental SteamOS top-bar weather</strong><small>Independent of the LED scene. A weather icon and temperature appear near the clock when a live reading is available.</small></span></label>
-              <p class="field-help" id="weatherTopbarSample">Top-bar example: ☀ 18°C · shown next to the clock. The real plugin needs a chosen city; this demo uses sample data only.</p>
-              <label class="slider-field" for="weatherBrightness"><span>Weather brightness <output id="weatherBrightnessValue">70%</output></span><input id="weatherBrightness" type="range" min="10" max="100" value="70"></label>
-              <label class="slider-field" for="weatherCutoff"><span>Turn faint LEDs off <output id="weatherCutoffValue">0</output></span><input id="weatherCutoff" type="range" min="0" max="60" value="0"></label>
-              <div class="button-row"><button class="button primary" id="weatherReplay">Replay weather loop</button></div>
-              <p class="field-help">Weather and the permanent controller gauge are alternatives. Countdowns and brief alerts still take priority. Snow takes hold is the shipped snow default. The plugin refreshes live conditions about every fifteen minutes using Open-Meteo; this page makes no weather request.</p>
-            </section>
-
-            <section class="pane" data-pane="audio-sync" aria-labelledby="audio-sync-heading">
-              <div class="pane-head"><p class="eyebrow">CURRENT LAB ENGINE</p><h3 id="audio-sync-heading">One soundtrack. Ten ways to read it.</h3><p>Choose Silksong or The Witcher 3 below. The browser follows the current Lab architecture: 48 kHz stereo, a 2,048-sample analysis window, one 60 ms visual block and adaptive programme matching over 10.2 seconds.</p></div>
-              <div class="audio-demo">
-                <label class="audio-source-picker">Gameplay example<select id="audioSyncExample"><option value="silksong" selected>Silksong</option><option value="witcher-bear">The Witcher 3 Remastered: Bear encounter</option></select></label>
-                <div class="audio-demo-meta"><span><b id="audioSyncState">Ready</b><small id="audioSyncTime">Press play to enable local audio analysis</small></span><span class="audio-local-badge">LOCAL ONLY</span></div>
-                <div class="audio-spectrum" id="audioSpectrum" aria-label="17 live logarithmic audio bands"></div>
-                <div class="audio-spectrum-labels"><span>45 Hz</span><span>17 LOG BANDS</span><span>16 kHz</span></div>
-              </div>
-              <div class="audio-defaults" aria-label="Current Lab defaults"><span><b>HOME</b> Slow Prism + Screen Sync</span><span><b>IN GAME</b> Hi-Fi Crest + Screen Sync</span></div>
-              <div class="form-grid"><label class="field">Pattern<select id="audioSyncStyle"><option value="spectrum">17-band spectrum</option><option value="audio-pulse">Audio pulse</option><option value="bass">Bass pulse</option><option value="constellation">Constellation</option><option value="hifi-crest" selected>Hi-Fi Crest</option><option value="negative-bloom">Negative Bloom</option><option value="slow-prism">Slow Prism</option><option value="spatial">Stereo field</option><option value="stereo-lanterns">Stereo Lanterns</option><option value="velvet-relay">Velvet Relay</option></select></label><label class="field">Reactivity<select id="audioSyncReactivity"><option value="calm">Calm</option><option value="balanced" selected>Balanced</option><option value="fast">Fast</option><option value="punchy">Punchy</option></select></label></div>
-              <p class="field-help audio-tuning" id="audioTuningNote">Recommended: Balanced · Brightness 160 / 255.</p>
-              <label class="slider-field" for="audioSyncBrightness"><span>Brightness <output id="audioSyncBrightnessValue">160 / 255</output></span><input id="audioSyncBrightness" type="range" min="34" max="255" step="1" value="160"></label>
-              <label class="field">Palette<select id="audioSyncPalette"><option value="artwork">Artwork</option><option value="aurora">Aurora</option><option value="candy">Candy</option><option value="coastline">Coastline</option><option value="copper">Copper</option><option value="custom">Custom colours</option><option value="deep-sea">Deep Sea</option><option value="ember">Ember</option><option value="forest">Forest</option><option value="glacier">Glacier</option><option value="ice">Ice</option><option value="lagoon">Lagoon</option><option value="lime">Lime</option><option value="magma">Magma</option><option value="orchid">Orchid</option><option value="pearl">Pearl</option><option value="plasma">Plasma</option><option value="sapphire">Sapphire</option><option value="screen-sync" selected>Screen Sync</option><option value="silver">Silver</option><option value="solar">Solar</option><option value="sunset">Sunset</option></select></label>
-              <div class="colour-row" id="audioSyncCustomColours" hidden><label>High, edges <input type="color" id="audioSyncColourHigh" value="#00aaff"></label><label>Mid, shoulders <input type="color" id="audioSyncColourMiddle" value="#702aff"></label><label>Low, centre <input type="color" id="audioSyncColourLow" value="#ff308c"></label></div>
-              <p class="field-help" id="audioSyncPaletteHelp">Screen Sync reduces the live frame to three coherent optical roles. Artwork is the first fallback, then Sapphire.</p>
-              <div class="audio-live-palette" id="audioLivePalette" aria-live="polite" hidden><small id="audioLivePaletteSource">LIVE SCREEN PALETTE</small><div><span id="audioLivePalette0" data-role="Edges"><b>#000000</b></span><span id="audioLivePalette1" data-role="Shoulders"><b>#000000</b></span><span id="audioLivePalette2" data-role="Centre"><b>#000000</b></span></div></div>
-              <div class="audio-metrics" aria-label="Live adaptive analysis"><span><small>Impact</small><b id="audioMetricImpact">0%</b></span><span><small>Attack</small><b id="audioMetricAttack">0%</b></span><span><small>Texture</small><b id="audioMetricTexture">0%</b></span><span><small>Stereo</small><b id="audioMetricStereo">0%</b></span><span><small>Window</small><b id="audioMetricWindow">0.0 s</b></span></div>
-              <div class="button-row"><button class="button primary" id="audioSyncPlay">Play Audio Sync</button><button class="button ghost" id="audioSyncRestart">Restart sequence</button></div>
-              <div class="callout compact"><strong>Real audio, faithful browser model.</strong><p>The soundtrack and video stay in this page. Audio analysis reads the decoded source track, so the player's volume and mute controls never reduce the modelled LED response. The plugin listens to PipeWire and captures Gamescope at 34 by 18 pixels. Every pattern is independent from every palette. Screen Sync uses three harmonised colours with a bright centre, darker shoulders and still darker edges; Artwork and Sapphire provide stable fallbacks. Steam safety and temporary layers keep priority.</p></div>
-            </section>
-
-            <section class="pane" data-pane="screen-sync" aria-labelledby="screen-sync-heading">
-              <div class="pane-head"><p class="eyebrow">LIVE GAMEPLAY COLOURS</p><h3 id="screen-sync-heading">Let the picture reach the machine.</h3><p>Choose Silksong or The Witcher 3. Panorama maps each live frame to 17 zones; Ambient reduces the same 34 by 18 capture to one calmer colour.</p></div>
-              <label class="field">Gameplay example<select id="screenSyncExample"><option value="silksong" selected>Silksong</option><option value="witcher-bear">The Witcher 3 Remastered: Bear encounter</option></select></label>
-              <div class="form-grid"><label class="field">Style<select id="screenSyncStyle"><option value="panorama" selected>Panorama · 17 zones</option><option value="ambient">Ambient · one colour</option></select></label><label class="field">Capture cadence<select disabled><option>34 × 18 · 10 fps</option></select></label></div>
-              <div class="form-grid"><label class="field">Reactivity<select id="screenSyncReactivity"><option value="calm">Calm</option><option value="balanced" selected>Balanced</option><option value="fast">Fast</option></select></label><label class="field">Colour intensity<select id="screenSyncIntensity"><option value="natural" selected>Natural</option><option value="vivid">Vivid</option></select></label></div>
-              <label class="slider-field" for="screenSyncBrightness"><span>Brightness <output id="screenSyncBrightnessValue">160 / 255</output></span><input id="screenSyncBrightness" type="range" min="34" max="255" value="160"></label>
-              <label class="slider-field" for="screenSyncBlackThreshold"><span>Black threshold <output id="screenSyncBlackThresholdValue">8</output></span><input id="screenSyncBlackThreshold" type="range" min="0" max="32" value="8"></label>
-              <label class="toggle-line"><input type="checkbox" id="screenSyncBlackBars" checked><span><strong>Ignore stable cinematic black bars</strong><small>The real plugin waits for three consistent frames before cropping.</small></span></label>
-              <div class="button-row"><button class="button primary" id="screenSyncPlay">Play Screen Sync</button><button class="button ghost" id="screenSyncReplay">Restart sequence</button></div>
-              <div class="callout compact"><strong>Real frames, faithful browser model.</strong><p>The video stays in this page and is sampled at the plugin's 34 by 18 capture size and 10 fps. Zone averaging, bright-HUD rejection, stable black-bar crop, spatial blur, black-frame guard and response smoothing follow the Screen Sync processor. The plugin uses Gamescope's PipeWire source and yields when another capture consumer owns it.</p></div>
-            </section>
-
-            <section class="pane" data-pane="witcher" aria-labelledby="witcher-heading">
-              <div class="pane-head"><p class="eyebrow">APPID 292030 · EXPERIMENTAL</p><h3 id="witcher-heading">The Witcher 3 HUD on 17 LEDs.</h3><p>This manual simulator mirrors the beta renderer. The real Lab needs the bundled WitcherScript bridge and does not claim the bar until a live <code>GCA1</code> record proves the current session.</p></div>
-              <div class="experimental-banner"><strong>Experimental feature</strong><span>Made specifically for The Witcher 3: Wild Hunt, Complete Edition / Remastered on Steam AppID 292030.</span></div>
-              <label class="slider-field" for="witcherHealth"><span>Vitality <output id="witcherHealthValue">72%</output></span><input id="witcherHealth" type="range" min="0" max="100" value="72"></label>
-              <label class="slider-field" for="witcherStamina"><span>Stamina <output id="witcherStaminaValue">86%</output></span><input id="witcherStamina" type="range" min="0" max="100" value="86"></label>
-              <label class="slider-field" for="witcherToxicity"><span>Toxicity <output id="witcherToxicityValue">0%</output></span><input id="witcherToxicity" type="range" min="0" max="100" value="0"></label>
-              <div class="form-grid"><label class="field">Adrenaline<select id="witcherAdrenaline"><option value="0">No point</option><option value="1">1 point</option><option value="2" selected>2 points</option><option value="3">3 points</option></select></label><label class="inline-check controller-charge-check"><input type="checkbox" id="witcherCombat" checked><span>Combat state</span></label></div>
-              <div class="control-group"><span class="group-label">CAST A SIGN</span><div class="segmented witcher-signs" role="group" aria-label="Witcher Sign"><button data-witcher-sign="aard">Aard</button><button data-witcher-sign="axii">Axii</button><button data-witcher-sign="igni">Igni</button><button data-witcher-sign="quen">Quen</button><button data-witcher-sign="yrden">Yrden</button></div></div>
-              <div class="callout compact"><strong>Required Steam launch options</strong><p>Open The Witcher 3 → Properties → General → Launch Options and enter exactly <code>-net -debugscripts</code>. The diagnostic log additionally needs <code>DebugScriptsForceFlush=true</code> under <code>[Scripts]</code> in the Proton prefix's <code>user.settings</code>.</p></div>
-            </section>
-
-            <section class="pane" data-pane="priorities" aria-labelledby="priorities-heading">
-              <div class="pane-head"><p class="eyebrow">HOW IT COEXISTS</p><h3 id="priorities-heading">One bar, clear priorities.</h3><p>Signals do not all play at once. The most important active message takes the bar, then the underlying display comes back.</p></div>
-              <ol class="priority-list"><li><b>Master disabled</b><span>GabeCubeAura stops every output and returns complete control to Steam.</span></li><li><b>Steam and system safety</b><span>Native download activity, repeated Valve writes and the fixed red critical thermal warning keep the bar.</span></li><li><b>Critical countdown</b><span>The final five minutes protect the timer from launch animations and events.</span></li><li><b>Short alerts</b><span>Notifications, achievements, captures and controller warnings pause a Game launch.</span></li><li><b>Game launch</b><span>The artwork animation resumes after an alert and keeps its full visible timer.</span></li><li><b>Active countdown</b><span>Steam Families or your personal timer replaces the permanent display.</span></li><li><b>Permanent display</b><span>Audio Sync, Screen Sync, Customization+, Artwork, Performance, Controllers or Weather returns underneath.</span></li><li><b>GabeCubeAura Off</b><span>No permanent GabeCubeAura scene; temporary layers can still appear.</span></li></ol>
-              <div class="form-grid"><label class="field">Context<select id="contextChoice"><option value="game">In game</option><option value="home">Steam Home</option></select></label><label class="field">Permanent display<select id="displayChoice"><option value="customization">Customization+</option><option value="artwork">Artwork</option><option value="performance" selected>Performance</option><option value="audio-sync">Audio Sync</option><option value="disabled">GabeCubeAura Off</option></select></label></div>
-              <label class="slider-field" for="extraDark"><span>Extra dark physical LEDs <output id="extraDarkValue">2</output></span><input id="extraDark" type="range" min="0" max="5" value="2"></label>
-              <label class="toggle-line"><input type="checkbox" id="reversePhysical" checked><span><strong>Reverse physical LED order</strong><small>Matches the Steam Machine's hardware mapping; logical preview stays left to right.</small></span></label>
-              <div class="button-row"><button class="button ghost" id="priorityDemo">Set timer to 4 min</button><button class="button ghost" id="priorityNotify">Send a notification</button><button class="button ghost" id="resetDemo">Reset simulator</button></div>
-              <p class="priority-feedback" id="priorityFeedback" role="status">Set the timer to four minutes, then send a notification to see the priority rule.</p>
-              <p class="field-help">Extra dark LEDs affect Countdown and Performance hardware output only, not the logical preview. In the real plugin, Advanced / debug also offers confirmed JSON import and Reset to defaults. No hardware access occurs on this site.</p>
-            </section>
-          </div>
-        </div>
-
-        <aside class="stage-shell" aria-label="Live Steam Machine simulation">
-          <div class="stage-top"><div><p class="eyebrow">LIVE PREVIEW</p><strong id="stageTitle">The Steam Machine</strong></div><div class="stage-controls"><button id="pauseDemo" aria-label="Pause animation" title="Pause animation">Ⅱ</button><button id="resetView" aria-label="Replay current animation" title="Replay current animation">↻</button></div></div>
-          <div class="stage-context"><span class="status-dot"></span><span id="contextLabel">IN GAME · Deep Rock Galactic</span><button id="contextSwitch" title="Toggle between Steam Home and in game">Go Home ↔</button><span class="stage-mini" id="providerBadge">ARTWORK</span></div>
-          <div class="machine-scene"><div class="scene-wall-line"></div><div class="scene-shelf"></div><a class="machine-measure" href="https://store.steampowered.com/hardware/steammachine" target="_blank" rel="noopener noreferrer" title="Valve Steam Machine specifications">FRONT VIEW · 156 × 152 MM ↗</a><div class="steam-machine"><div class="cube-face"><video class="gameplay-capsule" id="audioSyncVideo" controls autoplay muted playsinline loop preload="metadata" src="assets/karmelita-prime.mp4" aria-label="Silksong gameplay used for the Audio Sync and Screen Sync demonstrations" hidden></video></div><div class="led-seam"><canvas id="ledCanvas" aria-hidden="true"></canvas></div><div class="machine-front"><span class="port port-a"></span><span class="port port-b"></span><span class="sd-slot"></span><span class="power-led"></span><span class="power-button"></span></div></div></div>
-          <div class="logical-panel"><div class="logical-head"><div><span class="logical-kicker">17-PIXEL LOGICAL PREVIEW</span><strong id="signalName">Game artwork</strong></div><span id="signalReadout">Deep Rock Galactic</span></div><div class="logical-leds" id="logicalLeds" aria-label="17 logical LED colours"></div><div class="logical-foot" id="logicalFoot"><span>LEFT</span><span>LED 9 · CENTRE</span><span>RIGHT</span></div><div class="controller-seat-legend" id="controllerSeatLegend" hidden></div><div class="stage-explain" id="stageExplain">The row selected on your artwork becomes the bar's colour palette.</div></div>
-          <div class="demo-disclaimer"><span class="info-icon">i</span><span>Browser simulation. Colours, diffuser and timing can look different on real hardware.</span></div>
-        </aside>
-      </div>
-    </section>
-
-    <div class="mobile-preview" id="mobilePreview" aria-label="Live LED bar on mobile"><div><strong id="mobileSignal">Game artwork</strong><a href="audio-sync/#lab" id="mobileJump">View machine ↑</a></div><div class="mobile-leds" id="mobileLeds" aria-hidden="true"></div></div>
-
-    <footer><div><strong>GabeCubeAura Concept Lab</strong><p>Made for the official Steam Machine. Audio Sync analyses the real soundtrack locally, while Screen Sync samples the same gameplay frames. The browser models do not access Gamescope, PipeWire or hardware.</p></div><div><a href="https://github.com/Alyenax/GabeCubeAura" target="_blank" rel="noopener noreferrer">Source code ↗</a><a href="https://github.com/Alyenax/GabeCubeAura/releases" target="_blank" rel="noopener noreferrer">Releases ↗</a></div></footer>
-  </main>
+<body style="margin:0;background:#0c131b;color:#eef6ff;font:16px system-ui,sans-serif">
+  <noscript>JavaScript is required for the Audio Sync simulator.</noscript>
+  <div id="routeLoader" style="min-height:100vh;display:grid;place-items:center">Loading Audio Sync…</div>
+  <script>
+    (async () => {
+      const response = await fetch('../index.html', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Concept Lab request failed (${response.status})`);
+      let html = await response.text();
+      const closeScript = '</scr' + 'ipt>';
+      const appTag = '<script src="app.js" defer>' + closeScript;
+      const patchTag = '<script src="audio-sync-mobile-fix.js" defer>' + closeScript;
+      if (!html.includes(appTag)) throw new Error('Could not locate app.js in Concept Lab');
+      html = html.replace('<head>', '<head>\n  <base href="../">');
+      html = html.replace(appTag, appTag + '\n  ' + patchTag);
+      html = html.replace(
+        '<title>GabeCubeAura Concept Lab</title>',
+        '<title>Audio Sync · GabeCubeAura Concept Lab</title>'
+      );
+      document.open();
+      document.write(html);
+      document.close();
+    })().catch((error) => {
+      const loader = document.getElementById('routeLoader');
+      if (loader) loader.textContent = `Audio Sync could not start: ${error.message || error}`;
+    });
+  </script>
 </body>
 </html>
