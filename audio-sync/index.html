@@ -23,11 +23,12 @@
       const closeScript = '</scr' + 'ipt>';
       const appTag = '<script src="app.js" defer>' + closeScript;
       const patchTag = '<script src="audio-sync-mobile-fix.js" defer>' + closeScript;
+      const routeTag = '<script src="audio-sync-route-init.js" defer>' + closeScript;
       if (!html.includes(appTag)) throw new Error('Could not locate app.js in Concept Lab');
 
       html = html.replace('<head>', '<head>\n  <base href="./">');
       html = html.replace(' controls autoplay muted playsinline loop ', ' controls muted playsinline loop ');
-      html = html.replace(appTag, appTag + '\n  ' + patchTag);
+      html = html.replace(appTag, appTag + '\n  ' + patchTag + '\n  ' + routeTag);
       html = html.replace(
         '<title>GabeCubeAura Concept Lab</title>',
         '<title>Audio Sync · GabeCubeAura Concept Lab</title>'
