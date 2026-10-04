@@ -2,6 +2,8 @@
 
 A standalone, interactive product preview for [GabeCubeAura](https://github.com/Alyenax/GabeCubeAura). It simulates the official Steam Machine's 17-pixel light bar without installing Decky Loader, reading a Steam account, or writing to hardware.
 
+[Open Audio Sync directly](https://alyenax.github.io/gabecubeaura-concept/audio-sync/) with Silksong, Slow Prism, Screen Sync colours and the Fast response preset already selected.
+
 The mockup includes a focused presentation of the current **GabeCubeAura 1.3.2 Lab Audio Sync engine** while preserving the earlier feature set. It includes:
 
 - Customization+ as an independent permanent display, with all 61 effects grouped under Steady, Light Events, Controllers, Weather and Game Launches;

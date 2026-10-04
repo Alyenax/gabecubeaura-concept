@@ -2095,18 +2095,33 @@ function resetDemo() {
   $("#pauseDemo").textContent = "Ⅱ";
   syncEventUI(); syncControllerUI(); syncWeatherUI(); syncAudioUI(); syncCustomizationUI(); syncLaunchUI(); updateOutputs(); loadArtwork(); loadLaunchArtwork(); setTab("overview", false);
 }
-function openTabFromHash() {
-  const tab = window.location.hash.slice(1);
+function directRouteTab() {
+  const route = window.location.pathname.replace(/\/+$/, "").split("/").pop();
+  return route === "audio-sync" ? "audio-sync" : "";
+}
+function applyDirectRouteDefaults() {
+  if (directRouteTab() !== "audio-sync") return;
+  state.audioSyncExample = "silksong";
+  state.audioSyncStyle = "slow-prism";
+  state.audioSyncPalette = "screen-sync";
+  state.audioSyncReactivity = "fast";
+  state.audioSyncBrightness = AUDIO_TUNING["slow-prism"][0];
+}
+function openTabFromLocation() {
+  const hash = window.location.hash.slice(1);
+  if (hash && !$(`.tab[data-tab="${hash}"]`)) return;
+  const tab = hash || directRouteTab();
   if (!tab || !$(`.tab[data-tab="${tab}"]`)) return;
   setTab(tab);
   requestAnimationFrame(() => $("#lab")?.scrollIntoView({ block: "start" }));
 }
 function init() {
+  applyDirectRouteDefaults();
   $("#launchPattern").replaceChildren(...LAUNCH_PATTERNS.map(([value, label]) => new Option(label, value)));
   syncCustomizationUI(); syncLaunchUI(); loadLaunchArtwork();
   bindControls();
-  openTabFromHash();
-  window.addEventListener("hashchange", openTabFromHash);
+  openTabFromLocation();
+  window.addEventListener("hashchange", openTabFromLocation);
   syncEventUI(); syncControllerUI(); syncWeatherUI(); syncAudioUI(); updateOutputs(); loadArtwork();
   updateMobilePreviewVisibility();
   requestAnimationFrame(tick);

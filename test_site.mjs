@@ -420,6 +420,29 @@ try {
   assert.match(await page.locator("#priorityFeedback").textContent(), /held/);
   assert.equal(await page.locator("#providerBadge").textContent(), "PLAYTIME");
 
+  const directAudio = await browser.newPage({ viewport: { width: 1100, height: 780 }, deviceScaleFactor: 1 });
+  const directAudioFailures = [];
+  directAudio.on("pageerror", (error) => errors.push(`audio-sync route: ${error.message}`));
+  directAudio.on("response", (response) => { if (!response.ok()) directAudioFailures.push(`${response.status()} ${response.url()}`); });
+  await directAudio.goto(new URL("audio-sync/", url).toString(), { waitUntil: "networkidle" });
+  assert.equal(await directAudio.locator('[data-tab="audio-sync"]').getAttribute("aria-selected"), "true");
+  assert.equal(await directAudio.locator("#audioSyncExample").inputValue(), "silksong");
+  assert.equal(await directAudio.locator("#audioSyncStyle").inputValue(), "slow-prism");
+  assert.equal(await directAudio.locator("#audioSyncPalette").inputValue(), "screen-sync");
+  assert.equal(await directAudio.locator("#audioSyncReactivity").inputValue(), "fast");
+  assert.equal(await directAudio.locator("#audioSyncBrightness").inputValue(), "180");
+  assert.equal(await directAudio.locator('link[rel="canonical"]').getAttribute("href"), "https://alyenax.github.io/gabecubeaura-concept/audio-sync/");
+  await directAudio.locator("#audioSyncVideo").evaluate((video) => new Promise((resolve, reject) => {
+    if (video.readyState >= 1) resolve();
+    else {
+      video.addEventListener("loadedmetadata", resolve, { once: true });
+      video.addEventListener("error", () => reject(new Error("direct Audio Sync gameplay video failed to load")), { once: true });
+    }
+  }));
+  assert.equal(await directAudio.locator("#audioSyncVideo").evaluate((video) => video.currentSrc.endsWith("assets/karmelita-prime.mp4")), true);
+  assert.deepEqual(directAudioFailures, []);
+  await directAudio.close();
+
   const directFile = await browser.newPage({ viewport: { width: 1100, height: 780 }, deviceScaleFactor: 1 });
   directFile.on("pageerror", (error) => errors.push(`file:// ${error.message}`));
   await directFile.goto(pathToFileURL(path.resolve("index.html")).href, { waitUntil: "load" });
