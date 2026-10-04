@@ -424,7 +424,7 @@ try {
   const directAudioFailures = [];
   directAudio.on("pageerror", (error) => errors.push(`audio-sync route: ${error.message}`));
   directAudio.on("response", (response) => { if (!response.ok()) directAudioFailures.push(`${response.status()} ${response.url()}`); });
-  await directAudio.goto(new URL("audio-sync/", url).toString(), { waitUntil: "networkidle" });
+  await directAudio.goto(new URL("audio-sync/", url).toString(), { waitUntil: "domcontentloaded" });
   assert.equal(await directAudio.locator('[data-tab="audio-sync"]').getAttribute("aria-selected"), "true");
   assert.equal(await directAudio.locator("#audioSyncExample").inputValue(), "silksong");
   assert.equal(await directAudio.locator("#audioSyncStyle").inputValue(), "slow-prism");
@@ -439,6 +439,8 @@ try {
       video.addEventListener("error", () => reject(new Error("direct Audio Sync gameplay video failed to load")), { once: true });
     }
   }));
+  await directAudio.waitForFunction(() => !document.querySelector("#audioSyncVideo").paused);
+  assert.equal(await directAudio.locator("#audioSyncVideo").evaluate((video) => video.muted), true);
   assert.equal(await directAudio.locator("#audioSyncVideo").evaluate((video) => video.currentSrc.endsWith("assets/karmelita-prime.mp4")), true);
   assert.deepEqual(directAudioFailures, []);
   await directAudio.close();

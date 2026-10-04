@@ -2107,6 +2107,19 @@ function applyDirectRouteDefaults() {
   state.audioSyncReactivity = "fast";
   state.audioSyncBrightness = AUDIO_TUNING["slow-prism"][0];
 }
+async function startDirectRoutePlayback() {
+  if (directRouteTab() !== "audio-sync") return;
+  const video = $("#audioSyncVideo");
+  video.muted = true;
+  try {
+    await Promise.all([video.play(), ensureAudioGraph()]);
+  } catch (error) {
+    $("#audioSyncState").textContent = "Ready";
+    $("#audioSyncTime").textContent = "Autoplay was blocked by this browser. Press play to start local audio analysis.";
+  }
+  syncAudioPlaybackUI();
+  syncScreenPlaybackUI();
+}
 function openTabFromLocation() {
   const hash = window.location.hash.slice(1);
   if (hash && !$(`.tab[data-tab="${hash}"]`)) return;
@@ -2124,6 +2137,7 @@ function init() {
   window.addEventListener("hashchange", openTabFromLocation);
   syncEventUI(); syncControllerUI(); syncWeatherUI(); syncAudioUI(); updateOutputs(); loadArtwork();
   updateMobilePreviewVisibility();
+  void startDirectRoutePlayback();
   requestAnimationFrame(tick);
 }
 init();
