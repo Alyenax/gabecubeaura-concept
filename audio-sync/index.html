@@ -13,19 +13,26 @@
   <div id="routeLoader" style="min-height:100vh;display:grid;place-items:center">Loading Audio Sync…</div>
   <script>
     (async () => {
-      const response = await fetch('../index.html', { cache: 'no-store' });
+      const requestedUrl = location.pathname + location.search + location.hash;
+      window.__GABECUBEAURA_AUDIO_SYNC_ROUTE__ = requestedUrl;
+      history.replaceState(null, '', new URL('../?audio-sync-loader=1', location.href));
+
+      const response = await fetch('index.html', { cache: 'no-store' });
       if (!response.ok) throw new Error(`Concept Lab request failed (${response.status})`);
       let html = await response.text();
       const closeScript = '</scr' + 'ipt>';
       const appTag = '<script src="app.js" defer>' + closeScript;
       const patchTag = '<script src="audio-sync-mobile-fix.js" defer>' + closeScript;
       if (!html.includes(appTag)) throw new Error('Could not locate app.js in Concept Lab');
-      html = html.replace('<head>', '<head>\n  <base href="../">');
+
+      html = html.replace('<head>', '<head>\n  <base href="./">');
+      html = html.replace(' controls autoplay muted playsinline loop ', ' controls muted playsinline loop ');
       html = html.replace(appTag, appTag + '\n  ' + patchTag);
       html = html.replace(
         '<title>GabeCubeAura Concept Lab</title>',
         '<title>Audio Sync · GabeCubeAura Concept Lab</title>'
       );
+
       document.open();
       document.write(html);
       document.close();
