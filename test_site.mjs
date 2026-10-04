@@ -24,7 +24,7 @@ try {
   page.on("request", (request) => { if (request.url().endsWith("-frames.json")) jsonRequests.push(request.url()); });
   await page.goto(url, { waitUntil: "networkidle" });
   assert.match(await page.title(), /GabeCubeAura Concept Lab/);
-  assert.match(await page.locator("body").innerText(), /GabeCubeAura 1\.2\.0 beta preview/);
+  assert.match(await page.locator("body").innerText(), /GabeCubeAura 1\.3\.2 Lab preview/);
   assert.equal(await page.locator('[data-pane="witcher"] .eyebrow').textContent(), "APPID 292030 · EXPERIMENTAL");
   assert.equal(await page.locator('link[rel="canonical"]').getAttribute("href"), "https://alyenax.github.io/gabecubeaura-concept/");
   const publicLinks = await page.locator('a[href*="github.com/"]').evaluateAll((links) => links.map((link) => link.href));
@@ -250,6 +250,68 @@ try {
   assert.equal(await page.locator('[data-controller-row="2"]').isHidden(), true);
   await page.locator("#controllerCount").selectOption("4");
 
+  await page.locator('[data-tab="audio-sync"]').click();
+  await page.locator("#audioSyncVideo").evaluate((video) => new Promise((resolve, reject) => {
+    if (video.readyState >= 1) resolve();
+    else {
+      video.addEventListener("loadedmetadata", resolve, { once: true });
+      video.addEventListener("error", () => reject(new Error("Audio Sync gameplay video failed to load")), { once: true });
+    }
+  }));
+  const media = await page.locator("#audioSyncVideo").evaluate((video) => ({ duration: video.duration, width: video.videoWidth, height: video.videoHeight }));
+  assert.ok(media.duration > 176 && media.duration < 178, `unexpected gameplay duration: ${media.duration}`);
+  assert.ok(media.width > 0 && media.height > 0, `gameplay video dimensions: ${media.width}x${media.height}`);
+  assert.equal(await page.locator("#audioSyncVideo").evaluate((video) => video.parentElement.classList.contains("cube-face")), true);
+  await page.waitForFunction(() => {
+    const video = document.querySelector("#audioSyncVideo"), bounds = video.getBoundingClientRect();
+    return !video.hidden && bounds.width > 0 && bounds.height > 0;
+  });
+  assert.equal(await page.locator("#audioSyncExample option").count(), 2);
+  await page.locator("#audioSyncExample").selectOption("witcher-bear");
+  await page.waitForFunction(() => {
+    const video = document.querySelector("#audioSyncVideo");
+    return video.readyState >= 1 && video.currentSrc.endsWith("witcher-3-remastered-bear.mp4");
+  });
+  const witcherMedia = await page.locator("#audioSyncVideo").evaluate((video) => ({ duration: video.duration, width: video.videoWidth, height: video.videoHeight }));
+  assert.ok(witcherMedia.duration > 1, `unexpected Witcher gameplay duration: ${witcherMedia.duration}`);
+  assert.ok(witcherMedia.width > 0 && witcherMedia.height > 0, `Witcher gameplay dimensions: ${witcherMedia.width}x${witcherMedia.height}`);
+  await page.locator("#audioSyncExample").selectOption("silksong");
+  await page.waitForFunction(() => document.querySelector("#audioSyncVideo").readyState >= 1 && document.querySelector("#audioSyncVideo").currentSrc.endsWith("karmelita-prime.mp4"));
+  assert.equal(await page.locator("#audioSpectrum i").count(), 17);
+  await page.locator("#audioSyncPlay").click();
+  await page.waitForFunction(() => document.querySelector("#providerBadge")?.textContent === "LIVE AUDIO", null, { timeout: 5000 });
+  await page.waitForFunction(() => [...document.querySelectorAll("#logicalLeds i")].some((led) => getComputedStyle(led).backgroundColor !== "rgb(51, 69, 78)"), null, { timeout: 5000 });
+  assert.match(await page.locator("#audioSyncState").textContent(), /Analysing live audio/);
+  for (const style of ["spectrum", "audio-pulse", "bass", "constellation", "hifi-crest", "negative-bloom", "slow-prism", "spatial", "stereo-lanterns", "velvet-relay"]) {
+    await page.locator("#audioSyncStyle").selectOption(style);
+    await page.waitForTimeout(180);
+    assert.match(await page.locator("#signalName").textContent(), /Audio Sync/);
+  }
+  await page.locator("#audioSyncStyle").selectOption("hifi-crest");
+  await page.locator("#audioSyncPalette").selectOption("screen-sync");
+  assert.match(await page.locator("#audioSyncPaletteHelp").textContent(), /three coherent colours/);
+  await page.waitForTimeout(500);
+  assert.match(await page.locator("#signalReadout").textContent(), /SCREEN SYNC/);
+  assert.match(await page.locator("#stageExplain").textContent(), /adaptive 10\.2-second/);
+  const screenPulseColours = await page.locator("#logicalLeds i").evaluateAll((leds) => leds.map((led) => getComputedStyle(led).backgroundColor));
+  assert.ok(new Set(screenPulseColours).size >= 3, `Screen Sync palette lacks spatial colour variation: ${screenPulseColours.join(", ")}`);
+  await page.waitForTimeout(450);
+  const movedScreenPulseColours = await page.locator("#logicalLeds i").evaluateAll((leds) => leds.map((led) => getComputedStyle(led).backgroundColor));
+  assert.ok(movedScreenPulseColours.some((colour, index) => colour !== screenPulseColours[index]), "Hi-Fi Crest did not react to the video and audio sequence");
+  await page.locator(".workbench").screenshot({ path: "/tmp/gabecubeaura-concept-audio-sync-hifi-crest.png" });
+  await page.locator("#audioSyncBrightness").fill("190");
+  assert.equal(await page.locator("#audioSyncBrightnessValue").textContent(), "190 / 255");
+  assert.equal(await page.locator("#audioSyncStyle option").count(), 10);
+  assert.equal(await page.locator("#audioSyncPalette option").count(), 22);
+  assert.equal(await page.locator("#audioSyncReactivity option").count(), 4);
+  assert.equal(await page.locator("#audioMetricWindow").textContent().then((text) => text.endsWith(" s")), true);
+  await page.locator("#audioSyncPalette").selectOption("custom");
+  assert.equal(await page.locator("#audioSyncCustomColours").isVisible(), true);
+  await page.locator("#audioSyncStyle").selectOption("spectrum");
+  await page.waitForTimeout(220);
+  await page.locator(".workbench").screenshot({ path: "/tmp/gabecubeaura-concept-audio-sync-spectrum.png" });
+  await page.locator("#audioSyncPlay").click();
+
   await page.locator('[data-tab="screen-sync"]').click();
   await page.waitForFunction(() => document.querySelector("#providerBadge")?.textContent === "SCREEN SYNC");
   assert.match(await page.locator("#signalName").textContent(), /Panorama/);
@@ -261,7 +323,11 @@ try {
   });
   assert.match(await page.locator("#signalName").textContent(), /Ambient/);
   await page.locator("#screenSyncBrightness").fill("48");
-  assert.equal(await page.locator("#screenSyncBrightnessValue").textContent(), "48%");
+  await page.locator("#screenSyncReactivity").selectOption("fast");
+  await page.locator("#screenSyncIntensity").selectOption("vivid");
+  await page.locator("#screenSyncBlackThreshold").fill("12");
+  assert.equal(await page.locator("#screenSyncBrightnessValue").textContent(), "48 / 255");
+  assert.equal(await page.locator("#screenSyncBlackThresholdValue").textContent(), "12");
   await page.locator("#screenSyncReplay").click();
   await page.locator(".workbench").screenshot({ path: "/tmp/gabecubeaura-concept-screen-sync.png" });
 
@@ -341,6 +407,20 @@ try {
   await directFile.locator('[data-tab="artwork"]').click();
   await directFile.locator("#artUpload").setInputFiles(path.resolve("assets/balatro-hero.jpg"));
   await directFile.waitForFunction(() => document.querySelector("#artTitle")?.textContent === "Your image");
+  await directFile.locator('[data-tab="audio-sync"]').click();
+  await directFile.locator("#audioSyncVideo").evaluate((video) => new Promise((resolve, reject) => {
+    if (video.readyState >= 1) resolve();
+    else {
+      video.addEventListener("loadedmetadata", resolve, { once: true });
+      video.addEventListener("error", () => reject(new Error("file Audio Sync gameplay video failed to load")), { once: true });
+    }
+  }));
+  await directFile.locator("#audioSyncStyle").selectOption("slow-prism");
+  await directFile.locator("#audioSyncPalette").selectOption("screen-sync");
+  await directFile.locator("#audioSyncPlay").click();
+  await directFile.waitForFunction(() => document.querySelector("#providerBadge")?.textContent === "LIVE AUDIO", null, { timeout: 5000 });
+  await directFile.waitForFunction(() => new Set([...document.querySelectorAll("#logicalLeds i")].map((led) => getComputedStyle(led).backgroundColor)).size >= 3, null, { timeout: 5000 });
+  await directFile.locator("#audioSyncPlay").click();
   await directFile.close();
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
@@ -349,7 +429,7 @@ try {
   const mobileMachineRatio = await mobile.locator(".steam-machine").evaluate((element) => element.offsetWidth / element.offsetHeight);
   assert.ok(Math.abs(mobileMachineRatio - 156 / 152) < 0.015, `mobile machine front ratio: ${mobileMachineRatio}`);
   await mobile.screenshot({ path: "/tmp/gabecubeaura-concept-mobile.png", fullPage: true });
-  for (const tab of ["customization", "artwork", "performance", "launches", "playtime", "events", "controllers", "weather", "screen-sync", "witcher", "priorities"]) {
+  for (const tab of ["customization", "artwork", "performance", "launches", "playtime", "events", "controllers", "weather", "audio-sync", "screen-sync", "witcher", "priorities"]) {
     await mobile.locator(`[data-tab="${tab}"]`).click();
     const width = await mobile.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     assert.ok(width <= 1, `${tab} horizontal overflow: ${width}px`);
@@ -361,7 +441,7 @@ try {
   const overflow = await mobile.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   assert.ok(overflow <= 1, `mobile horizontal overflow: ${overflow}px`);
   assert.deepEqual(errors, []);
-  console.log("PASS: GabeCubeAura 1.2 beta lab, Screen Sync, experimental Witcher HUD, four-controller simulator, file:// datasets, all major tabs and 390px layout");
+  console.log("PASS: GabeCubeAura 1.3 lab, live Audio Sync media analysis, Screen Sync, experimental Witcher HUD, four-controller simulator, file:// datasets, all major tabs and 390px layout");
 } finally {
   await browser.close();
 }

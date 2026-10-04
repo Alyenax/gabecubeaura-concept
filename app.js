@@ -35,6 +35,47 @@ const PALETTES = {
   thermal: ["#24c5e7", "#f2a724", "#e52239"],
   icefire: ["#287beb", "#a65be8", "#f98ac1"],
 };
+const AUDIO_PALETTES = {
+  aurora: ["#00aaff", "#702aff", "#ff308c"],
+  candy: ["#71ffff", "#ff68e7", "#ff396a"],
+  coastline: ["#0b5e8e", "#087fbf", "#1a9fff"],
+  copper: ["#ffd27a", "#f69a3c", "#b95a2a"],
+  "deep-sea": ["#7eebff", "#237ddb", "#14255e"],
+  ember: ["#ffa21c", "#ff4812", "#b21250"],
+  forest: ["#8affc4", "#48e073", "#397a29"],
+  glacier: ["#d8ffff", "#5ddeff", "#2867d8"],
+  ice: ["#1edcff", "#2870ff", "#8444ff"],
+  lagoon: ["#b7fff5", "#21d7c0", "#087d91"],
+  lime: ["#f2ffb0", "#a8ef45", "#3c8c46"],
+  magma: ["#ffff2e", "#ffad29", "#ff0400"],
+  orchid: ["#ffe1ff", "#ee72de", "#7b3ba7"],
+  pearl: ["#ffffff", "#c9e8ff", "#7696d8"],
+  plasma: ["#f5ecff", "#a45aff", "#5426b7"],
+  sapphire: ["#6387e9", "#4e76e4", "#4e76e4"],
+  silver: ["#ffffff", "#c7d0da", "#5f6875"],
+  solar: ["#ffffff", "#ffe25a", "#ff9a1f"],
+  sunset: ["#fff0b0", "#ff8d54", "#c33c72"],
+};
+const AUDIO_SMOOTHING = {
+  calm: [.30, .12], balanced: [.58, .24], fast: [.82, .42], punchy: [1, .58],
+};
+const AUDIO_TUNING = {
+  "hifi-crest": [160, "balanced"], "velvet-relay": [184, "fast"], "negative-bloom": [192, "fast"],
+  "stereo-lanterns": [172, "balanced"], constellation: [205, "fast"], "slow-prism": [180, "fast"],
+  spectrum: [190, "fast"], spatial: [170, "balanced"], bass: [185, "fast"], "audio-pulse": [168, "balanced"],
+};
+const AUDIO_PATTERN_LABELS = {
+  spectrum: "17-band spectrum", "audio-pulse": "Audio pulse", bass: "Bass pulse", constellation: "Constellation",
+  "hifi-crest": "Hi-Fi Crest", "negative-bloom": "Negative Bloom", "slow-prism": "Slow Prism", spatial: "Stereo field",
+  "stereo-lanterns": "Stereo Lanterns", "velvet-relay": "Velvet Relay",
+};
+const AUDIO_EXAMPLES = {
+  silksong: { title: "Silksong", source: "assets/karmelita-prime.mp4" },
+  "witcher-bear": { title: "The Witcher 3 Remastered: Bear encounter", source: "assets/witcher-3-remastered-bear.mp4" },
+};
+const SCREEN_SYNC_SMOOTHING = {
+  calm: [.24, .14], balanced: [.46, .28], fast: [.72, .52],
+};
 const START_COLOURS = { cyan: "#19c3eb", green: "#2dcd69", amber: "#f5a523", violet: "#a555eb", white: "#e1ebf5" };
 const EVENT_OPTIONS = {
   notification: [
@@ -137,7 +178,11 @@ function defaultState() {
     padHealthy: "#00b42d", padMedium: "#e66e00", padLow: "#dc0c18", padCharge: "#0091dc",
     weatherCondition: "clear_day", weatherVariants: { clear_day: 0, clear_night: 0, rain: 0, cloud: 1, breaks: 0, breaks_night: 0, snow: 1, storm: 0 },
     weatherWhere: "off", weatherTopbar: false, weatherUnit: "celsius", weatherBrightness: 70, weatherCutoff: 0, weatherStart: 0,
-    screenSyncStyle: "panorama", screenSyncScene: "sky", screenSyncBrightness: 63, screenSyncIntensity: 85, screenSyncBlackBars: true, screenSyncStart: 0,
+    audioSyncExample: "silksong", audioSyncStyle: "hifi-crest", audioSyncReactivity: "balanced", audioSyncBrightness: 160,
+    audioSyncPalette: "screen-sync", audioSyncColours: ["#00aaff", "#702aff", "#ff308c"],
+    audioLevels: Array(17).fill(0), audioLeft: 0, audioRight: 0, audioVideoColours: null, audioVideoPalette: null, audioArtworkPalette: null,
+    audioMetrics: { impact: 0, attack: 0, texture: 0, stereo: 0, window: 0 }, audioHistory: [], audioCrests: [],
+    screenSyncStyle: "panorama", screenSyncScene: "sky", screenSyncBrightness: 160, screenSyncReactivity: "balanced", screenSyncIntensity: "natural", screenSyncBlackThreshold: 8, screenSyncBlackBars: true, screenSyncStart: 0,
     witcherHealth: 72, witcherStamina: 86, witcherToxicity: 0, witcherAdrenaline: 2, witcherCombat: true,
     customPattern: "steady", customPaletteCount: 2, customColours: ["#FFD000", "#00C8FF", "#FF3C9D"], customBrightness: 128, customSpeed: 50, customDirection: "forward",
     launchGame: "drg", launchSource: "hero", launchColourCount: 2, launchPattern: "arpege-crossed", launchDuration: 20,
@@ -154,6 +199,25 @@ let lastRealTime = performance.now();
 let artworkLoadToken = 0;
 let launchArtworkLoadToken = 0;
 let customObjectUrl = null;
+let audioContext = null;
+let audioMediaSource = null;
+let audioLeftAnalyser = null;
+let audioRightAnalyser = null;
+let audioLeftData = null;
+let audioRightData = null;
+let audioLastAnalysis = 0;
+let audioLastCapture = 0;
+let audioLastVideoSample = 0;
+let audioVideoPrevious = null;
+let audioVideoSourceActive = false;
+let audioVideoBarCandidate = [0, 0];
+let audioVideoBarStreak = 0;
+let audioVideoStableBars = [0, 0];
+let audioVideoBlackStreak = 0;
+let audioVideoStyle = "";
+const audioVideoCanvas = document.createElement("canvas");
+audioVideoCanvas.width = 34;
+audioVideoCanvas.height = 18;
 const ledElements = Array.from({ length: 17 }, () => {
   const led = document.createElement("i");
   $("#logicalLeds").append(led);
@@ -164,6 +228,11 @@ const mobileLedElements = Array.from({ length: 17 }, () => {
   $("#mobileLeds").append(led);
   return led;
 });
+const audioBandElements = Array.from({ length: 17 }, () => {
+  const band = document.createElement("i");
+  $("#audioSpectrum").append(band);
+  return band;
+});
 
 function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
 function rgbToHex(rgb) { return `#${rgb.map((value) => Math.round(value).toString(16).padStart(2, "0")).join("")}`; }
@@ -172,6 +241,15 @@ function blend(a, b, amount) { return a.map((value, index) => Math.round(value *
 function scale(color, amount) { return color.map((value) => Math.round(value * amount)); }
 function blank() { return Array.from({ length: 17 }, () => [...OFF]); }
 function isLit(color) { return color.some((value) => value > 3); }
+function emissivePreviewColour(colour, exponent = .58) {
+  if (!isLit(colour)) return [...OFF];
+  const [hue, saturation, value] = rgbToHsv(colour);
+  return hsvToRgb([
+    hue,
+    clamp(saturation * 1.18, 0, 1),
+    .025 + .975 * Math.pow(value, exponent),
+  ]);
+}
 function formatTime(seconds) { const safe = Math.max(0, Math.ceil(seconds)); return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`; }
 function ease(value) { const x = clamp(value, 0, 1); return x * x * (3 - 2 * x); }
 function fill(frame, from, to, color) { for (let index = Math.max(0, from); index <= Math.min(16, to); index++) frame[index] = [...color]; }
@@ -348,14 +426,482 @@ function screenSyncFrame() {
     const scaled = position * (palette.length - 1);
     const left = Math.floor(scaled), right = Math.min(palette.length - 1, left + 1);
     let colour = blend(palette[left], palette[right], scaled - left);
-    const average = colour.reduce((sum, value) => sum + value, 0) / 3;
-    colour = colour.map((value) => average + (value - average) * state.screenSyncIntensity / 100);
-    return colour.map((value) => clamp(Math.round(value * state.screenSyncBrightness / 100), 0, 255));
+    const [hue, saturation, value] = rgbToHsv(colour);
+    colour = hsvToRgb([hue, clamp(saturation * (state.screenSyncIntensity === "vivid" ? 1.3 : 1), 0, 1), value * state.screenSyncBrightness / 255]);
+    return screenLuma(colour) <= state.screenSyncBlackThreshold ? [0, 0, 0] : colour;
   });
   const frame = state.screenSyncStyle === "ambient"
     ? Array.from({ length: 17 }, () => [0, 1, 2].map((channel) => Math.round(raw.reduce((sum, pixel) => sum + pixel[channel], 0) / raw.length)))
     : raw;
   return { logical: frame, physical: frame, name: `Screen Sync · ${state.screenSyncStyle === "ambient" ? "Ambient" : "Panorama"}`, readout: `${state.screenSyncScene} sample · local simulation`, explain: "The real beta samples Gamescope in memory. Steam activity, alerts, launches and countdowns remain above this permanent display.", badge: "SCREEN SYNC" };
+}
+function audioPaletteFrame(mirrored = true) {
+  let raw;
+  if (state.audioSyncPalette === "screen-sync") raw = state.audioVideoPalette || state.audioArtworkPalette || AUDIO_PALETTES.sapphire;
+  else if (state.audioSyncPalette === "artwork") raw = state.audioArtworkPalette || AUDIO_PALETTES.sapphire;
+  else raw = state.audioSyncPalette === "custom" ? state.audioSyncColours : AUDIO_PALETTES[state.audioSyncPalette] || AUDIO_PALETTES.sapphire;
+  const colours = raw.map((colour) => typeof colour === "string" ? hexToRgb(colour) : colour);
+  return Array.from({ length: 17 }, (_, index) => {
+    if (!mirrored) {
+      const position = index / 16;
+      return position <= .5 ? blend(colours[0], colours[1], position * 2) : blend(colours[1], colours[2], (position - .5) * 2);
+    }
+    const distance = Math.abs(index - 8) / 8;
+    return distance <= .5 ? blend(colours[2], colours[1], distance * 2) : blend(colours[1], colours[0], (distance - .5) * 2);
+  });
+}
+function harmonizeAudioPalette(colours) {
+  const useful = colours.filter((colour) => screenLuma(colour) > 12).map((colour) => {
+    const hsv = rgbToHsv(colour);
+    return { colour, hue: hsv[0], saturation: hsv[1], value: hsv[2], score: hsv[1] * .72 + hsv[2] * .28 };
+  });
+  if (!useful.length) return AUDIO_PALETTES.sapphire.map(hexToRgb);
+  const anchor = useful.reduce((best, item) => item.score > best.score ? item : best, useful[0]);
+  const hueDelta = (first, second) => ((second - first + .5) % 1) - .5;
+  const candidates = useful.sort((first, second) => second.score - first.score);
+  const shoulder = candidates.find((item) => Math.abs(hueDelta(anchor.hue, item.hue)) > .025) || anchor;
+  const outer = candidates.find((item) => item !== shoulder && Math.abs(hueDelta(anchor.hue, item.hue)) > .04) || shoulder;
+  const make = (source, maxShift, saturation, value) => hsvToRgb([
+    (anchor.hue + clamp(hueDelta(anchor.hue, source.hue), -maxShift, maxShift) + 1) % 1,
+    clamp(Math.max(saturation, source.saturation * .86), .42, .90), value,
+  ]);
+  return [make(outer, 20 / 360, .56, .24), make(shoulder, 32 / 360, .62, .43), make(anchor, 0, .68, .64)];
+}
+function screenLuma(colour) {
+  return .2126 * colour[0] + .7152 * colour[1] + .0722 * colour[2];
+}
+function srgbToLinear(channel) {
+  const value = channel / 255;
+  return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+}
+function linearToSrgb(channel) {
+  const value = channel <= .0031308 ? 12.92 * channel : 1.055 * channel ** (1 / 2.4) - .055;
+  return Math.round(clamp(value, 0, 1) * 255);
+}
+function rgbToHsv([red, green, blue]) {
+  const r = red / 255, g = green / 255, b = blue / 255;
+  const maximum = Math.max(r, g, b), minimum = Math.min(r, g, b), delta = maximum - minimum;
+  let hue = 0;
+  if (delta) {
+    if (maximum === r) hue = ((g - b) / delta) % 6;
+    else if (maximum === g) hue = (b - r) / delta + 2;
+    else hue = (r - g) / delta + 4;
+    hue = ((hue / 6) + 1) % 1;
+  }
+  return [hue, maximum ? delta / maximum : 0, maximum];
+}
+function hsvToRgb([hue, saturation, value]) {
+  const sector = Math.floor(hue * 6), fraction = hue * 6 - sector;
+  const p = value * (1 - saturation), q = value * (1 - fraction * saturation), t = value * (1 - (1 - fraction) * saturation);
+  const [red, green, blue] = [[value, t, p], [q, value, p], [p, value, t], [p, q, value], [t, p, value], [value, p, q]][sector % 6];
+  return [red, green, blue].map((channel) => Math.round(clamp(channel, 0, 1) * 255));
+}
+function rgbToHsl([red, green, blue]) {
+  const r = red / 255, g = green / 255, b = blue / 255;
+  const maximum = Math.max(r, g, b), minimum = Math.min(r, g, b), lightness = (maximum + minimum) / 2;
+  if (maximum === minimum) return [0, lightness, 0];
+  const delta = maximum - minimum;
+  const saturation = lightness > .5 ? delta / (2 - maximum - minimum) : delta / (maximum + minimum);
+  let hue = maximum === r ? (g - b) / delta + (g < b ? 6 : 0) : maximum === g ? (b - r) / delta + 2 : (r - g) / delta + 4;
+  return [hue / 6, lightness, saturation];
+}
+function hslToRgb([hue, lightness, saturation]) {
+  hue = ((hue % 1) + 1) % 1;
+  if (!saturation) return [lightness, lightness, lightness].map((channel) => Math.round(channel * 255));
+  const q = lightness < .5 ? lightness * (1 + saturation) : lightness + saturation - lightness * saturation;
+  const p = 2 * lightness - q;
+  const channel = (offset) => {
+    let value = hue + offset;
+    if (value < 0) value += 1;
+    if (value > 1) value -= 1;
+    if (value < 1 / 6) return p + (q - p) * 6 * value;
+    if (value < 1 / 2) return q;
+    if (value < 2 / 3) return p + (q - p) * (2 / 3 - value) * 6;
+    return p;
+  };
+  return [channel(1 / 3), channel(0), channel(-1 / 3)].map((value) => Math.round(value * 255));
+}
+function meanScreenColour(pixels) {
+  if (!pixels.length) return [0, 0, 0];
+  const ordered = [...pixels].sort((first, second) => screenLuma(first) - screenLuma(second));
+  const sample = ordered.slice(0, Math.max(1, Math.round(ordered.length * .95)));
+  return [0, 1, 2].map((channel) => linearToSrgb(sample.reduce((sum, pixel) => sum + srgbToLinear(pixel[channel]), 0) / sample.length));
+}
+function detectAudioVideoBars(pixels) {
+  if (!state.screenSyncBlackBars) return [0, 0];
+  const threshold = state.screenSyncBlackThreshold + 4;
+  const rowIsBlack = (row) => {
+    let dark = 0;
+    for (let column = 0; column < 34; column++) {
+      if (screenLuma(pixels[row * 34 + column]) <= threshold) dark++;
+    }
+    return dark >= Math.floor(34 * .9);
+  };
+  const limit = Math.floor(18 / 3);
+  let top = 0, bottom = 0;
+  while (top < limit && rowIsBlack(top)) top++;
+  while (bottom < limit && rowIsBlack(17 - bottom)) bottom++;
+  const candidate = [top, bottom];
+  if (candidate[0] === audioVideoBarCandidate[0] && candidate[1] === audioVideoBarCandidate[1]) audioVideoBarStreak++;
+  else { audioVideoBarCandidate = candidate; audioVideoBarStreak = 1; }
+  if (audioVideoBarStreak >= 3) audioVideoStableBars = candidate;
+  return audioVideoStableBars;
+}
+function adjustAudioVideoColours(colours) {
+  const brightness = clamp(state.screenSyncBrightness, 34, 255) / 255;
+  const saturationScale = state.screenSyncIntensity === "vivid" ? 1.3 : 1;
+  return colours.map((colour) => {
+    if (screenLuma(colour) <= state.screenSyncBlackThreshold) return [0, 0, 0];
+    const [hue, saturation, value] = rgbToHsv(colour);
+    return hsvToRgb([hue, clamp(saturation * saturationScale, 0, 1), value * brightness]);
+  });
+}
+function resetAudioVideoProcessor() {
+  audioVideoPrevious = null;
+  audioVideoSourceActive = false;
+  audioVideoBarCandidate = [0, 0];
+  audioVideoBarStreak = 0;
+  audioVideoStableBars = [0, 0];
+  audioVideoBlackStreak = 0;
+  state.audioVideoColours = null;
+  state.audioVideoPalette = null;
+}
+function sampleAudioVideoColours(video) {
+  if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+    audioVideoSourceActive = false;
+    return audioPaletteFrame();
+  }
+  try {
+    const context = audioVideoCanvas.getContext("2d", { willReadFrequently: true });
+    context.drawImage(video, 0, 0, audioVideoCanvas.width, audioVideoCanvas.height);
+    const raw = context.getImageData(0, 0, audioVideoCanvas.width, audioVideoCanvas.height).data;
+    const pixels = Array.from({ length: audioVideoCanvas.width * audioVideoCanvas.height }, (_, index) => [raw[index * 4], raw[index * 4 + 1], raw[index * 4 + 2]]);
+    const [top, bottom] = detectAudioVideoBars(pixels);
+    const rows = [];
+    for (let row = top; row < Math.max(top + 1, 18 - bottom); row++) rows.push(row);
+    let colours;
+    if (state.screenSyncStyle === "ambient") {
+      const colour = meanScreenColour(rows.flatMap((row) => Array.from({ length: 34 }, (_, column) => pixels[row * 34 + column])));
+      colours = Array.from({ length: 17 }, () => [...colour]);
+    } else {
+      colours = Array.from({ length: 17 }, (_, led) => {
+        const zone = [];
+        const left = Math.floor(led * 34 / 17), right = Math.max(left + 1, Math.floor((led + 1) * 34 / 17));
+        for (const row of rows) for (let column = left; column < right; column++) zone.push(pixels[row * 34 + column]);
+        return meanScreenColour(zone);
+      });
+    }
+    colours = adjustAudioVideoColours(colours);
+    colours = colours.map((centre, index) => {
+      const left = colours[Math.max(0, index - 1)], right = colours[Math.min(16, index + 1)];
+      return [0, 1, 2].map((channel) => Math.round(left[channel] * .2 + centre[channel] * .6 + right[channel] * .2));
+    });
+    const allBlack = colours.every((colour) => screenLuma(colour) <= state.screenSyncBlackThreshold);
+    audioVideoBlackStreak = allBlack ? audioVideoBlackStreak + 1 : 0;
+    let result = audioVideoBlackStreak >= 3 ? blank() : colours;
+    if (audioVideoBlackStreak < 3 && audioVideoPrevious) {
+      const [brightenAlpha, darkenAlpha] = SCREEN_SYNC_SMOOTHING[state.screenSyncReactivity] || SCREEN_SYNC_SMOOTHING.balanced;
+      result = colours.map((current, index) => {
+        const previous = audioVideoPrevious[index];
+        const alpha = screenLuma(current) >= screenLuma(previous) ? brightenAlpha : darkenAlpha;
+        return current.map((channel, offset) => Math.round(previous[offset] + (channel - previous[offset]) * alpha));
+      });
+    }
+    audioVideoPrevious = result;
+    const palette = harmonizeAudioPalette(result);
+    state.audioVideoPalette = palette;
+    if (!state.audioArtworkPalette) state.audioArtworkPalette = palette.map((colour) => [...colour]);
+    audioVideoSourceActive = true;
+    return audioPaletteFrame();
+  } catch (_error) {
+    audioVideoSourceActive = false;
+    return audioPaletteFrame();
+  }
+}
+function audioRms(values) {
+  let sum = 0;
+  for (const value of values) sum += value * value;
+  return Math.sqrt(sum / Math.max(1, values.length));
+}
+function audioFftMagnitudes(left, right) {
+  const size = 2048;
+  const real = new Float64Array(size), imaginary = new Float64Array(size);
+  for (let index = 0; index < size; index++) {
+    const mono = ((left[index] || 0) + (right[index] || 0)) * .5;
+    real[index] = mono * (.5 - .5 * Math.cos(2 * Math.PI * index / (size - 1)));
+  }
+  let reversed = 0;
+  for (let index = 1; index < size; index++) {
+    let bit = size >> 1;
+    while (reversed & bit) { reversed ^= bit; bit >>= 1; }
+    reversed ^= bit;
+    if (index < reversed) {
+      [real[index], real[reversed]] = [real[reversed], real[index]];
+      [imaginary[index], imaginary[reversed]] = [imaginary[reversed], imaginary[index]];
+    }
+  }
+  for (let length = 2; length <= size; length <<= 1) {
+    const angle = -2 * Math.PI / length, cosine = Math.cos(angle), sine = Math.sin(angle), half = length >> 1;
+    for (let start = 0; start < size; start += length) {
+      let factorReal = 1, factorImaginary = 0;
+      for (let offset = 0; offset < half; offset++) {
+        const oddIndex = start + offset + half;
+        const oddReal = factorReal * real[oddIndex] - factorImaginary * imaginary[oddIndex];
+        const oddImaginary = factorReal * imaginary[oddIndex] + factorImaginary * real[oddIndex];
+        const evenIndex = start + offset, evenReal = real[evenIndex], evenImaginary = imaginary[evenIndex];
+        real[evenIndex] = evenReal + oddReal; imaginary[evenIndex] = evenImaginary + oddImaginary;
+        real[oddIndex] = evenReal - oddReal; imaginary[oddIndex] = evenImaginary - oddImaginary;
+        const nextReal = factorReal * cosine - factorImaginary * sine;
+        factorImaginary = factorReal * sine + factorImaginary * cosine;
+        factorReal = nextReal;
+      }
+    }
+  }
+  return Array.from({ length: size / 2 }, (_, index) => Math.hypot(real[index], imaginary[index]) / (size / 2));
+}
+function updateAudioBands() {
+  const colours = audioPaletteFrame(false);
+  audioBandElements.forEach((element, index) => {
+    const level = state.audioLevels[index] || 0;
+    element.style.height = `${Math.max(3, Math.round(level * 100))}%`;
+    element.style.background = rgbToHex(colours[index]);
+    element.style.opacity = String(.24 + level * .76);
+  });
+  const metrics = state.audioMetrics;
+  for (const [name, value] of Object.entries(metrics)) {
+    const output = $(`#audioMetric${name[0].toUpperCase()}${name.slice(1)}`);
+    if (output) output.textContent = name === "window" ? `${value.toFixed(1)} s` : `${Math.round(value * 100)}%`;
+  }
+}
+function decayAudioAnalysis() {
+  const [, decay] = AUDIO_SMOOTHING[state.audioSyncReactivity] || AUDIO_SMOOTHING.balanced;
+  state.audioLevels = state.audioLevels.map((value) => value * (1 - decay));
+  state.audioLeft *= 1 - decay;
+  state.audioRight *= 1 - decay;
+  for (const key of ["impact", "attack", "texture", "stereo"]) state.audioMetrics[key] *= 1 - decay;
+  updateAudioBands();
+}
+function audioPercentile(values, amount) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.round((sorted.length - 1) * amount)];
+}
+function analyseAudioNow() {
+  const video = $("#audioSyncVideo");
+  const now = performance.now();
+  const processInterval = 60;
+  if (!audioLeftAnalyser || !audioRightAnalyser || !audioLeftData || !audioRightData || video.paused || video.ended) {
+    if (now - audioLastAnalysis >= processInterval) {
+      audioLastAnalysis = now;
+      decayAudioAnalysis();
+    }
+    return;
+  }
+  const captureInterval = 60;
+  const captured = now - audioLastCapture >= captureInterval;
+  if (captured) {
+    audioLastCapture = now;
+    audioLeftAnalyser.getFloatTimeDomainData(audioLeftData);
+    audioRightAnalyser.getFloatTimeDomainData(audioRightData);
+  }
+  if (!captured || now - audioLastAnalysis < processInterval) return;
+  audioLastAnalysis = now;
+  const magnitudes = audioFftMagnitudes(audioLeftData, audioRightData);
+  const sampleRate = audioContext.sampleRate;
+  const minimumHz = 45, maximumHz = Math.min(16000, sampleRate / 2 - 1);
+  const rawDb = Array.from({ length: 17 }, (_, index) => {
+    const low = minimumHz * ((maximumHz / minimumHz) ** (index / 17));
+    const high = minimumHz * ((maximumHz / minimumHz) ** ((index + 1) / 17));
+    const start = Math.max(1, Math.floor(low * 2048 / sampleRate));
+    const end = Math.min(magnitudes.length, Math.max(start + 1, Math.ceil(high * 2048 / sampleRate)));
+    let power = 0;
+    for (let bin = start; bin < end; bin++) {
+      power += magnitudes[bin] * magnitudes[bin];
+    }
+    const energy = Math.sqrt(power / Math.max(1, end - start));
+    return 20 * Math.log10(Math.max(1e-8, energy));
+  });
+  state.audioHistory.push(rawDb);
+  if (state.audioHistory.length > 170) state.audioHistory.shift();
+  const anchors = state.audioHistory.map((row) => audioPercentile(row, .76));
+  const low = audioPercentile(anchors, .15) - 7;
+  const high = Math.max(low + 18, audioPercentile(anchors, .92) + 3);
+  const anchor = audioPercentile(rawDb, .76), span = Math.max(18, high - low);
+  const programme = clamp((anchor - low) / span, 0, 1.18);
+  const current = rawDb.map((value) => clamp(programme + (value - anchor) / 34, 0, 1));
+  const [attack, decay] = AUDIO_SMOOTHING[state.audioSyncReactivity] || AUDIO_SMOOTHING.balanced;
+  const previousLevels = [...state.audioLevels];
+  state.audioLevels = current.map((value, index) => {
+    const previous = state.audioLevels[index] || 0;
+    const alpha = value >= previous ? attack : decay;
+    return previous + (value - previous) * alpha;
+  });
+  const left = clamp(audioRms(audioLeftData) * 4.6, 0, 1);
+  const right = clamp(audioRms(audioRightData) * 4.6, 0, 1);
+  state.audioLeft += (left - state.audioLeft) * (left >= state.audioLeft ? attack : decay);
+  state.audioRight += (right - state.audioRight) * (right >= state.audioRight ? attack : decay);
+  const mean = (values) => values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+  const bass = mean(state.audioLevels.slice(0, 5)), mid = mean(state.audioLevels.slice(5, 12)), highBand = mean(state.audioLevels.slice(12));
+  const bassFlux = Math.max(0, bass - mean(previousLevels.slice(0, 5))) * 4.6;
+  const midFlux = Math.max(0, mid - mean(previousLevels.slice(5, 12))) * 4.0;
+  const highFlux = Math.max(0, highBand - mean(previousLevels.slice(12))) * 3.6;
+  const metricTargets = {
+    impact: clamp(bassFlux * .86 + bass * .16, 0, 1),
+    attack: clamp(midFlux * .72 + highFlux * .28, 0, 1),
+    texture: clamp(highFlux + highBand * .12, 0, 1),
+    stereo: clamp(Math.abs(state.audioLeft - state.audioRight), 0, 1),
+  };
+  for (const [key, target] of Object.entries(metricTargets)) {
+    const currentMetric = state.audioMetrics[key];
+    const alpha = target >= currentMetric ? attack : decay;
+    state.audioMetrics[key] += (target - currentMetric) * alpha;
+  }
+  state.audioMetrics.window = Math.min(10.2, state.audioHistory.length * .06);
+  if (["screen-sync", "artwork"].includes(state.audioSyncPalette) && now - audioLastVideoSample >= 100) {
+    audioLastVideoSample = now;
+    state.audioVideoColours = sampleAudioVideoColours(video);
+  }
+  updateAudioBands();
+}
+function audioOpticalScale(colour, level, brightness) {
+  if (level < .055) return [0, 0, 0];
+  let clean = [...colour];
+  const [, saturation, value] = rgbToHsv(clean);
+  if (saturation < .08 && value > .62) clean = [255, 226, 194];
+  else if (saturation < .18) clean = [Math.min(255, clean[0] * 1.05 + 2), clean[1] * .97, clean[2] * .86];
+  const amount = brightness / 255 * (.28 + clamp(level, 0, 1) * .56);
+  let output = clean.map((channel) => channel * amount);
+  const peak = Math.max(...output);
+  if (peak > 0 && peak < Math.min(34, brightness)) output = output.map((channel) => channel * Math.min(34, brightness) / peak);
+  if (Math.max(...output) > 212) output = output.map((channel) => channel * 212 / Math.max(...output));
+  return output.map((channel) => Math.round(clamp(channel, 0, 255)));
+}
+function renderAudioPattern(_base, brightness, nowSeconds) {
+  const { impact, attack, texture } = state.audioMetrics;
+  const bass = state.audioLevels.slice(0, 5).reduce((sum, value) => sum + value, 0) / 5;
+  const mid = state.audioLevels.slice(5, 12).reduce((sum, value) => sum + value, 0) / 7;
+  const high = state.audioLevels.slice(12).reduce((sum, value) => sum + value, 0) / 5;
+  const bed = bass * .42 + mid * .38 + high * .20;
+  const style = state.audioSyncStyle;
+  const linear = audioPaletteFrame(false), mirrored = audioPaletteFrame(true);
+  if (style === "spectrum") return linear.map((colour, index) => scale(colour, state.audioLevels[index] * brightness / 255));
+  if (style === "spatial") return linear.map((colour, index) => scale(colour, (state.audioLeft * (1 - index / 16) + state.audioRight * index / 16) * brightness / 255));
+  if (style === "bass") {
+    const level = clamp(bass * 1.10, 0, 1);
+    return mirrored.map((colour, index) => scale(colour, level * (1 - .50 * Math.abs(index - 8) / 8) * brightness / 255));
+  }
+  if (style === "audio-pulse") {
+    const pulse = clamp((state.audioLeft + state.audioRight) * .62 + Math.max(...state.audioLevels.slice(0, 9)) * .58, 0, 1);
+    return mirrored.map((colour) => scale(colour, pulse * brightness / 255));
+  }
+
+  const punchy = state.audioSyncReactivity === "punchy";
+  const cooldown = punchy ? .12 : .18;
+  if (impact >= .64 && (state.audioLastImpact || 0) < .64 && nowSeconds - (state.audioLastPulse || -10) >= cooldown - .000001) {
+    state.audioCrests.push([nowSeconds, clamp(.48 + impact * .52, 0, 1)]);
+    state.audioLastPulse = nowSeconds;
+  }
+  state.audioLastImpact = impact;
+  state.audioCrests = state.audioCrests.filter(([started]) => nowSeconds - started <= .66).slice(-2);
+
+  if (style === "velvet-relay") return mirrored.map((colour, index) => {
+    const distance = Math.abs(index - 8) / 8;
+    const wave = state.audioCrests.reduce((best, [started, strength]) => {
+      const age = Math.max(0, nowSeconds - started), radius = clamp(age / .36, 0, 1) * 1.06, width = .18 + age * .12;
+      return Math.max(best, Math.exp(-(((distance - radius) / width) ** 2)) * Math.max(0, 1 - age / .58) * strength);
+    }, 0);
+    const presence = clamp(bed * 4, 0, 1), level = (.06 + attack * .11 + texture * .07 * distance) * presence;
+    return audioOpticalScale(colour, level + wave * .67, brightness);
+  });
+
+  if (style === "negative-bloom") return mirrored.map((colour, index) => {
+    const distance = Math.abs(index - 8) / 8;
+    let cut = 0, rim = 0;
+    for (const [started, strength] of state.audioCrests) {
+      const age = Math.max(0, nowSeconds - started), radius = clamp(age / .42, 0, 1) * 1.08;
+      cut = Math.max(cut, Math.exp(-(((distance - radius) / .17) ** 2)) * Math.max(0, 1 - age / .60) * strength);
+      rim = Math.max(rim, Math.exp(-(((distance - radius - .17) / .13) ** 2)) * Math.max(0, 1 - age / .56) * strength);
+    }
+    const presence = clamp(bed * 4, 0, 1), level = (.16 + attack * .10 + texture * .05 * distance) * presence;
+    return cut > .44 ? [0, 0, 0] : audioOpticalScale(colour, level + rim * .30, brightness);
+  });
+
+  if (style === "stereo-lanterns") return mirrored.map((colour, index) => {
+    const position = (index - 8) / 8, leftWidth = .28 + state.audioLeft * .12, rightWidth = .28 + state.audioRight * .12;
+    const leftLobe = Math.exp(-(((position + .55) / leftWidth) ** 2)) * state.audioLeft;
+    const rightLobe = Math.exp(-(((position - .55) / rightWidth) ** 2)) * state.audioRight;
+    const mono = Math.exp(-((position / .20) ** 2)) * Math.max(0, impact - .36) * .46;
+    return audioOpticalScale(colour, .035 + (leftLobe + rightLobe) * .52 + mono, brightness);
+  });
+
+  if (style === "constellation") {
+    const levels = Array(17).fill(0);
+    [[8, impact * .76], [4, attack * .57], [12, attack * .57], [1, texture * .48], [15, texture * .48]]
+      .sort((a, b) => b[1] - a[1]).slice(0, 5).forEach(([index, strength]) => {
+        if (strength < .12) return;
+        levels[index] = Math.max(levels[index], strength);
+        if (index > 0) levels[index - 1] = Math.max(levels[index - 1], strength * .24);
+        if (index < 16) levels[index + 1] = Math.max(levels[index + 1], strength * .24);
+      });
+    return mirrored.map((colour, index) => audioOpticalScale(colour, levels[index], brightness));
+  }
+
+  if (style === "slow-prism") {
+    const step = state.audioHistory.length;
+    if (step % 8 === 1) state.audioHueTarget = clamp((texture - bass) * (26 / 360), -26 / 360, 26 / 360);
+    state.audioHueShift = (state.audioHueShift || 0) + ((state.audioHueTarget || 0) - (state.audioHueShift || 0)) * .08;
+    const roles = [mirrored[0], mirrored[4], mirrored[8]].map((colour) => {
+      const [hue, lightness, saturation] = rgbToHsl(colour);
+      return hslToRgb([hue + state.audioHueShift, lightness, saturation]);
+    });
+    const shifted = Array.from({ length: 17 }, (_, index) => {
+      const distance = Math.abs(index - 8) / 8;
+      return distance <= .5 ? blend(roles[2], roles[1], distance * 2) : blend(roles[1], roles[0], (distance - .5) * 2);
+    });
+    const spread = .20 + bed * .86;
+    return shifted.map((colour, index) => {
+      const distance = Math.abs(index - 8) / 8, edge = clamp((spread - distance) / .22, 0, 1);
+      const side = index < 8 ? state.audioLeft : state.audioRight;
+      return audioOpticalScale(colour, .035 + edge * (.22 + side * .30), brightness);
+    });
+  }
+
+  const motion = punchy ? [.12, 1 / .12, .18] : [.24, 2.75, .52];
+  if (impact > .70 && nowSeconds - (state.audioLastHifiCrest || -10) >= motion[0] - .000001) {
+    state.audioHifiCrests = [...(state.audioHifiCrests || []), [nowSeconds, clamp(.45 + impact * .55, 0, 1)]];
+    state.audioLastHifiCrest = nowSeconds;
+  }
+  state.audioHifiCrests = (state.audioHifiCrests || []).filter(([started]) => nowSeconds - started < motion[2] + .02);
+  return mirrored.map((colour, index) => {
+    const x = index / 8 - 1, distance = Math.abs(x), centre = Math.exp(-((distance / .24) ** 2));
+    const shoulders = Math.exp(-(((distance - .48) / .24) ** 2)), edges = Math.exp(-(((distance - .93) / .22) ** 2));
+    const stereoBalance = clamp((state.audioRight - state.audioLeft) * 2, -.45, .45), side = x < 0 ? 1 - stereoBalance : 1 + stereoBalance;
+    const ring = state.audioHifiCrests.reduce((best, [started, strength]) => {
+      const age = nowSeconds - started, radius = age * motion[1];
+      return Math.max(best, Math.exp(-(((distance - radius) / .14) ** 2)) * Math.max(0, 1 - age / motion[2]) * strength);
+    }, 0);
+    const level = clamp(.025 + bed * .20 + centre * impact * .62 + shoulders * attack * .42 * side + edges * texture * .28 * side + ring * .44, 0, .90);
+    return scale(colour, (level ** .68) * brightness / 255);
+  });
+}
+function audioSyncFrame() {
+  analyseAudioNow();
+  const video = $("#audioSyncVideo"), colours = audioPaletteFrame();
+  const frame = renderAudioPattern(colours, state.audioSyncBrightness, video.currentTime || clock / 1000);
+  const playing = !video.paused && !video.ended && Boolean(audioContext);
+  const position = Number.isFinite(video.currentTime) ? formatTime(video.currentTime) : "0:00";
+  const duration = Number.isFinite(video.duration) ? formatTime(video.duration) : "0:00";
+  const paletteName = state.audioSyncPalette.replaceAll("-", " ").toUpperCase();
+  const colourSource = state.audioSyncPalette === "screen-sync"
+    ? audioVideoSourceActive ? "SCREEN SYNC" : "SAPPHIRE FALLBACK"
+    : state.audioSyncPalette === "artwork" ? state.audioArtworkPalette ? "ARTWORK" : "SAPPHIRE FALLBACK" : `${paletteName} PALETTE`;
+  return {
+    logical: frame, physical: frame,
+    name: `Audio Sync · ${AUDIO_PATTERN_LABELS[state.audioSyncStyle]}`,
+    readout: playing ? `${colourSource} · 60 ms · ${position} / ${duration}` : "Press play to analyse the soundtrack",
+    explain: "All patterns share the same adaptive 10.2-second programme analysis. Only the spatial choreography changes.",
+    badge: playing ? "LIVE AUDIO" : "AUDIO READY",
+  };
 }
 function witcherVitalsFrame() {
   const frame = blank(), seconds = clock / 1000;
@@ -669,6 +1215,7 @@ function getCurrentOutput() {
   if (state.launchPlaying) return launchFrame();
   if (countdownActive) return countdownFrame();
   if (state.tab === "launches") return launchReadyFrame();
+  if (state.tab === "audio-sync") return audioSyncFrame();
   if (state.tab === "screen-sync") return screenSyncFrame();
   if (state.tab === "witcher") return witcherVitalsFrame();
   if (state.display === "disabled") return { logical: blank(), physical: blank(), name: "GabeCubeAura Off", readout: "Steam keeps the bar", explain: "No permanent GabeCubeAura display is selected here. Temporary GabeCubeAura layers can still appear; the master switch in the real plugin is the control that stops everything.", badge: "GABECUBEAURA OFF" };
@@ -679,6 +1226,7 @@ function getCurrentOutput() {
   if (state.weatherWhere === "everywhere" || state.weatherWhere === state.context) return weatherFrame();
   let output;
   if (state.display === "customization") output = customizationFrame();
+  else if (state.display === "audio-sync") output = audioSyncFrame();
   else if (state.display === "performance" && (state.context === "game" || state.perfHome)) output = performanceFrames();
   else if (state.display === "artwork" && state.context === "game") output = artworkFrame();
   else output = { logical: blank(), physical: blank(), name: "GabeCubeAura Off", readout: "Steam keeps the bar", explain: "Choose a permanent display for this context, or leave GabeCubeAura Off to keep Steam's own light-bar behaviour.", badge: "GABECUBEAURA OFF" };
@@ -704,7 +1252,11 @@ function drawPhysical(frame) {
   ctx.clearRect(0, 0, width, height);
   // With reversal enabled, the hardware mapping corrects its native right-to-left order.
   // Show the viewer-facing result, not the byte order sent to sysfs.
-  const pixels = state.reversePhysical ? frame : [...frame].reverse();
+  const ordered = state.reversePhysical ? frame : [...frame].reverse();
+  // Raw PWM values look much darker on an LCD than the emitted light behind
+  // the Steam Machine diffuser. Lift the physical illustration only; the
+  // logical 17-pixel preview above keeps the exact renderer values.
+  const pixels = ordered.map((colour) => emissivePreviewColour(colour, .50));
   const cell = width / 17, centreY = height * .48;
   ctx.globalCompositeOperation = "screen";
   pixels.forEach((color, index) => {
@@ -713,20 +1265,21 @@ function drawPhysical(frame) {
     const radius = cell * 1.32;
     const glow = ctx.createRadialGradient(x, centreY, 0, x, centreY, radius);
     const rgb = color.join(",");
-    glow.addColorStop(0, `rgba(${rgb},.42)`);
-    glow.addColorStop(.4, `rgba(${rgb},.17)`);
+    glow.addColorStop(0, `rgba(${rgb},.68)`);
+    glow.addColorStop(.4, `rgba(${rgb},.27)`);
     glow.addColorStop(1, `rgba(${rgb},0)`);
     ctx.fillStyle = glow;
     ctx.fillRect(x - radius, centreY - radius, radius * 2, radius * 2);
   });
   ctx.globalCompositeOperation = "source-over";
   const diffuser = ctx.createLinearGradient(0, 0, width, 0);
-  pixels.forEach((color, index) => diffuser.addColorStop((index + .5) / 17, `rgba(${color.join(",")},${isLit(color) ? .91 : 0})`));
+  pixels.forEach((color, index) => diffuser.addColorStop((index + .5) / 17, `rgba(${color.join(",")},${isLit(color) ? 1 : 0})`));
   ctx.fillStyle = diffuser;
   ctx.fillRect(0, centreY - height * .045, width, height * .09);
 }
- function renderStage() {
+function renderStage() {
   const output = getCurrentOutput();
+  $("#audioSyncVideo").hidden = state.tab !== "audio-sync";
   ledElements.forEach((element, index) => {
     const color = output.logical[index] || OFF;
     element.style.background = isLit(color) ? rgbToHex(color) : "#33454e";
@@ -764,14 +1317,23 @@ function drawPhysical(frame) {
   $("#providerBadge").textContent = output.badge;
   $("#mobileSignal").textContent = output.name;
   const stagedGame = state.tab === "launches" ? state.launchGame : state.game;
-  $("#contextLabel").textContent = state.context === "home" ? "STEAM HOME" : `IN GAME · ${GAME_DATA[stagedGame].title}`;
-  $("#contextSwitch").disabled = false;
-  $("#contextSwitch").textContent = state.context === "home" ? "Go in game ↔" : "Go Home ↔";
+  if (state.tab === "audio-sync") {
+    $("#contextLabel").textContent = `GAMEPLAY AUDIO · ${AUDIO_EXAMPLES[state.audioSyncExample].title}`;
+    $("#contextSwitch").disabled = true;
+    $("#contextSwitch").textContent = "LOCAL MEDIA";
+  } else {
+    $("#contextLabel").textContent = state.context === "home" ? "STEAM HOME" : `IN GAME · ${GAME_DATA[stagedGame].title}`;
+    $("#contextSwitch").disabled = false;
+    $("#contextSwitch").textContent = state.context === "home" ? "Go in game ↔" : "Go Home ↔";
+    $("#pauseDemo").textContent = state.paused ? "▶" : "Ⅱ";
+    $("#pauseDemo").setAttribute("aria-label", state.paused ? "Play animation" : "Pause animation");
+  }
   if (state.tab === "launches") {
     const remaining = Math.max(0, state.launchDuration - (clock - state.launchStarted) / 1000);
     const paletteReady = activeLaunchPalette().length === state.launchColourCount;
     $("#launchStatus").textContent = state.launchPlaying ? `Playing · ${Math.ceil(remaining)} s` : paletteReady ? `Ready · ${state.launchDuration} s` : "Waiting for colours";
   }
+  if (state.tab === "audio-sync") syncAudioPlaybackUI();
 }
 function tick(realNow) {
   const elapsed = clamp(realNow - lastRealTime, 0, 100);
@@ -993,7 +1555,87 @@ function startLaunchPreview() {
   state.launchStarted = clock; state.launchPlaying = true; state.context = "game"; state.overlay = null; state.timerRunning = false;
   $("#contextChoice").value = "game";
 }
+function syncAudioUI() {
+  if (audioVideoStyle !== state.audioSyncStyle) {
+    audioVideoStyle = state.audioSyncStyle;
+    resetAudioVideoProcessor();
+  }
+  $("#audioSyncExample").value = state.audioSyncExample;
+  $("#audioSyncStyle").value = state.audioSyncStyle;
+  $("#audioSyncReactivity").value = state.audioSyncReactivity;
+  $("#audioSyncBrightness").value = String(state.audioSyncBrightness);
+  $("#audioSyncPalette").value = state.audioSyncPalette;
+  $("#audioSyncCustomColours").hidden = state.audioSyncPalette !== "custom";
+  ["High", "Middle", "Low"].forEach((name, index) => {
+    $(`#audioSyncColour${name}`).value = state.audioSyncColours[index];
+  });
+  const paletteName = state.audioSyncPalette.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
+  $("#audioSyncPaletteHelp").textContent = state.audioSyncPalette === "screen-sync"
+    ? "Screen Sync extracts three coherent colours from the live frame. Artwork is the first fallback, then Sapphire."
+    : state.audioSyncPalette === "artwork"
+      ? "Artwork holds three coherent colours from the active game's artwork. Sapphire is used when artwork is unavailable."
+      : `${paletteName} assigns high texture to the edges, mid attack to the shoulders and low impact to the centre.`;
+  const [recommendedBrightness, recommendedReactivity] = AUDIO_TUNING[state.audioSyncStyle];
+  $("#audioTuningNote").textContent = `Recommended: ${recommendedReactivity[0].toUpperCase() + recommendedReactivity.slice(1)} · Brightness ${recommendedBrightness} / 255.`;
+  updateAudioBands();
+}
+function syncAudioPlaybackUI() {
+  const video = $("#audioSyncVideo");
+  const example = AUDIO_EXAMPLES[state.audioSyncExample];
+  const duration = Number.isFinite(video.duration) ? formatTime(video.duration) : "0:00";
+  const position = Number.isFinite(video.currentTime) ? formatTime(video.currentTime) : "0:00";
+  $("#audioSyncState").textContent = video.error ? "Video unavailable" : video.paused ? "Ready" : "Analysing live audio";
+  $("#audioSyncTime").textContent = video.error
+    ? "The local gameplay file could not be decoded"
+    : video.paused ? `${example.title} · ${position} / ${duration} · playback paused` : `${example.title} · ${position} / ${duration} · ${Math.round((audioContext?.sampleRate || 48000) / 1000)} kHz decoded locally`;
+  $("#audioSyncPlay").textContent = video.paused ? "Play Audio Sync" : "Pause Audio Sync";
+  if (state.tab === "audio-sync") {
+    $("#pauseDemo").textContent = video.paused ? "▶" : "Ⅱ";
+    $("#pauseDemo").setAttribute("aria-label", video.paused ? "Play gameplay audio" : "Pause gameplay audio");
+  }
+}
+async function ensureAudioGraph() {
+  const Context = window.AudioContext || window.webkitAudioContext;
+  if (!Context) throw new Error("Web Audio is unavailable in this browser");
+  if (!audioContext) {
+    const video = $("#audioSyncVideo");
+    audioContext = new Context({ sampleRate: 48000 });
+    audioMediaSource = audioContext.createMediaElementSource(video);
+    const splitter = audioContext.createChannelSplitter(2);
+    audioLeftAnalyser = audioContext.createAnalyser();
+    audioRightAnalyser = audioContext.createAnalyser();
+    audioLeftAnalyser.fftSize = 2048;
+    audioRightAnalyser.fftSize = 2048;
+    audioLeftAnalyser.smoothingTimeConstant = 0;
+    audioRightAnalyser.smoothingTimeConstant = 0;
+    const silent = audioContext.createGain();
+    silent.gain.value = 0;
+    audioMediaSource.connect(audioContext.destination);
+    audioMediaSource.connect(splitter);
+    splitter.connect(audioLeftAnalyser, 0);
+    splitter.connect(audioRightAnalyser, 1);
+    audioLeftAnalyser.connect(silent);
+    audioRightAnalyser.connect(silent);
+    silent.connect(audioContext.destination);
+    audioLeftData = new Float32Array(audioLeftAnalyser.fftSize);
+    audioRightData = new Float32Array(audioRightAnalyser.fftSize);
+  }
+  if (audioContext.state === "suspended") await audioContext.resume();
+}
+async function toggleAudioPlayback() {
+  const video = $("#audioSyncVideo");
+  try {
+    await ensureAudioGraph();
+    if (video.paused) await video.play();
+    else video.pause();
+  } catch (error) {
+    $("#audioSyncState").textContent = "Audio analysis unavailable";
+    $("#audioSyncTime").textContent = error instanceof Error ? error.message : String(error);
+  }
+  syncAudioPlaybackUI();
+}
 function setTab(tab, configure = true) {
+  if (state.tab === "audio-sync" && tab !== "audio-sync") $("#audioSyncVideo").pause();
   state.tab = tab;
   $$(".tab").forEach((button) => { const active = button.dataset.tab === tab; button.classList.toggle("active", active); button.setAttribute("aria-selected", String(active)); });
   $$(".pane").forEach((pane) => pane.classList.toggle("active", pane.dataset.pane === tab));
@@ -1006,6 +1648,7 @@ function setTab(tab, configure = true) {
     if (tab === "playtime") { state.display = "performance"; state.context = "game"; state.timerRunning = true; }
     if (tab === "controllers") { state.display = "performance"; state.context = "home"; state.timerRunning = false; state.padCharging = false; state.controllerWhere = "home"; state.weatherWhere = "off"; $("#controllerWhere").value = "home"; $("#weatherWhere").value = "off"; $("#padCharging").checked = false; }
     if (tab === "weather") { state.display = "performance"; state.context = "home"; state.timerRunning = false; state.padCharging = false; state.controllerWhere = "off"; state.weatherWhere = "home"; state.weatherStart = clock; $("#controllerWhere").value = "off"; $("#weatherWhere").value = "home"; $("#padCharging").checked = false; }
+    if (tab === "audio-sync") { state.display = "audio-sync"; state.context = "game"; state.timerRunning = false; state.launchPlaying = false; state.controllerWhere = "off"; state.weatherWhere = "off"; }
     if (tab === "screen-sync") { state.context = "game"; state.timerRunning = false; state.launchPlaying = false; state.controllerWhere = "off"; state.weatherWhere = "off"; state.screenSyncStart = clock; }
     if (tab === "witcher") { state.game = "witcher"; state.context = "game"; state.timerRunning = false; state.launchPlaying = false; state.controllerWhere = "off"; state.weatherWhere = "off"; }
     if (tab === "events") { state.display = "performance"; state.context = "game"; state.timerRunning = false; playEvent(); }
@@ -1022,6 +1665,7 @@ function choosePreset(preset) {
   if (preset === "playtime") setTab("playtime");
   if (preset === "controllers") setTab("controllers");
   if (preset === "weather") setTab("weather");
+  if (preset === "audio-sync") setTab("audio-sync");
   if (preset === "screen-sync") setTab("screen-sync");
   if (preset === "witcher") setTab("witcher");
   if (preset === "notification" || preset === "achievement") {
@@ -1086,7 +1730,7 @@ function playController() {
   state.overlay = { type: "controller", kind, variant: state.controllerVariants[kind], target: state.controllerTarget, start: clock, duration };
 }
 function updateOutputs() {
-  const outputs = { customBrightness: `${state.customBrightness} / 255`, customSpeed: `${state.customSpeed} / 100`, launchDuration: `${state.launchDuration} s`, artRow: `${getSampleRow()}%`, cpuLoad: `${state.cpu}%`, cpuTemp: `${state.cpuTemp}°C`, gpuLoad: `${state.gpu}%`, gpuTemp: `${state.gpuTemp}°C`, coolTemp: `${state.coolTemp}°C`, hotTemp: `${state.hotTemp}°C`, timerRemaining: formatTime(state.timerRemaining), padOne: `${state.padOne}%`, padTwo: `${state.padTwo}%`, padThree: `${state.padThree}%`, padFour: `${state.padFour}%`, lowThreshold: `${state.lowThreshold}%`, padBrightness: `${state.padBrightness}%`, weatherBrightness: `${state.weatherBrightness}%`, weatherCutoff: String(state.weatherCutoff), screenSyncBrightness: `${state.screenSyncBrightness}%`, screenSyncIntensity: `${state.screenSyncIntensity}%`, witcherHealth: `${state.witcherHealth}%`, witcherStamina: `${state.witcherStamina}%`, witcherToxicity: `${state.witcherToxicity}%`, extraDark: String(state.extraDark) };
+  const outputs = { customBrightness: `${state.customBrightness} / 255`, customSpeed: `${state.customSpeed} / 100`, launchDuration: `${state.launchDuration} s`, artRow: `${getSampleRow()}%`, cpuLoad: `${state.cpu}%`, cpuTemp: `${state.cpuTemp}°C`, gpuLoad: `${state.gpu}%`, gpuTemp: `${state.gpuTemp}°C`, coolTemp: `${state.coolTemp}°C`, hotTemp: `${state.hotTemp}°C`, timerRemaining: formatTime(state.timerRemaining), padOne: `${state.padOne}%`, padTwo: `${state.padTwo}%`, padThree: `${state.padThree}%`, padFour: `${state.padFour}%`, lowThreshold: `${state.lowThreshold}%`, padBrightness: `${state.padBrightness}%`, weatherBrightness: `${state.weatherBrightness}%`, weatherCutoff: String(state.weatherCutoff), audioSyncBrightness: `${state.audioSyncBrightness} / 255`, screenSyncBrightness: `${state.screenSyncBrightness} / 255`, screenSyncBlackThreshold: String(state.screenSyncBlackThreshold), witcherHealth: `${state.witcherHealth}%`, witcherStamina: `${state.witcherStamina}%`, witcherToxicity: `${state.witcherToxicity}%`, extraDark: String(state.extraDark) };
   Object.entries(outputs).forEach(([key, value]) => { const element = $(`#${key}Value`); if (element) element.textContent = value; });
 }
 function bindValue(id, stateKey, transform = (value) => value, callback) {
@@ -1208,10 +1852,49 @@ function bindControls() {
   bindValue("weatherBrightness", "weatherBrightness", Number);
   bindValue("weatherCutoff", "weatherCutoff", Number);
   $("#weatherReplay").addEventListener("click", () => { state.weatherStart = clock; });
+  $("#audioSyncExample").addEventListener("change", (event) => {
+    const video = $("#audioSyncVideo");
+    video.pause();
+    state.audioSyncExample = event.target.value;
+    state.audioLevels.fill(0); state.audioLeft = 0; state.audioRight = 0;
+    state.audioHistory = []; state.audioCrests = []; state.audioHifiCrests = []; state.audioArtworkPalette = null;
+    state.audioLastImpact = 0; state.audioLastPulse = -10; state.audioLastHifiCrest = -10; state.audioHueShift = 0; state.audioHueTarget = 0;
+    state.audioMetrics = { impact: 0, attack: 0, texture: 0, stereo: 0, window: 0 };
+    resetAudioVideoProcessor();
+    const example = AUDIO_EXAMPLES[state.audioSyncExample];
+    video.src = example.source;
+    video.setAttribute("aria-label", `${example.title} gameplay used for the Audio Sync demonstration`);
+    video.load();
+    syncAudioPlaybackUI();
+  });
+  bindValue("audioSyncStyle", "audioSyncStyle", String, () => { state.audioCrests = []; state.audioHifiCrests = []; syncAudioUI(); });
+  bindValue("audioSyncReactivity", "audioSyncReactivity");
+  bindValue("audioSyncBrightness", "audioSyncBrightness", Number);
+  bindValue("audioSyncPalette", "audioSyncPalette", String, syncAudioUI);
+  ["High", "Middle", "Low"].forEach((name, index) => {
+    $(`#audioSyncColour${name}`).addEventListener("input", (event) => {
+      state.audioSyncColours[index] = event.target.value.toLowerCase();
+      updateAudioBands();
+    });
+  });
+  const audioVideo = $("#audioSyncVideo");
+  $("#audioSyncPlay").addEventListener("click", toggleAudioPlayback);
+  $("#audioSyncRestart").addEventListener("click", async () => {
+    audioVideo.currentTime = 0;
+    resetAudioVideoProcessor();
+    if (audioVideo.paused) await toggleAudioPlayback();
+  });
+  audioVideo.addEventListener("play", () => { void ensureAudioGraph().then(syncAudioPlaybackUI).catch((error) => {
+    $("#audioSyncState").textContent = "Audio analysis unavailable";
+    $("#audioSyncTime").textContent = error instanceof Error ? error.message : String(error);
+  }); });
+  for (const event of ["loadedmetadata", "timeupdate", "pause", "ended", "error"]) audioVideo.addEventListener(event, syncAudioPlaybackUI);
   bindValue("screenSyncStyle", "screenSyncStyle");
   bindValue("screenSyncScene", "screenSyncScene", String, () => { state.screenSyncStart = clock; });
   bindValue("screenSyncBrightness", "screenSyncBrightness", Number);
-  bindValue("screenSyncIntensity", "screenSyncIntensity", Number);
+  bindValue("screenSyncReactivity", "screenSyncReactivity");
+  bindValue("screenSyncIntensity", "screenSyncIntensity");
+  bindValue("screenSyncBlackThreshold", "screenSyncBlackThreshold", Number);
   $("#screenSyncBlackBars").addEventListener("change", (event) => { state.screenSyncBlackBars = event.target.checked; });
   $("#screenSyncReplay").addEventListener("click", () => { state.screenSyncStart = clock; });
   bindValue("witcherHealth", "witcherHealth", Number);
@@ -1231,16 +1914,26 @@ function bindControls() {
     else { playEvent("notification-beacon"); $("#priorityFeedback").textContent = "Notification shown briefly. The previous signal returns when it finishes."; }
   });
   $("#resetDemo").addEventListener("click", resetDemo);
-  $("#pauseDemo").addEventListener("click", () => { state.paused = !state.paused; $("#pauseDemo").textContent = state.paused ? "▶" : "Ⅱ"; $("#pauseDemo").setAttribute("aria-label", state.paused ? "Play animation" : "Pause animation"); });
-  $("#resetView").addEventListener("click", () => { if (state.overlay) state.overlay.start = clock; else if (state.tab === "events") playEvent(); else if (state.tab === "controllers") playController(); else if (state.tab === "weather") state.weatherStart = clock; else if (state.tab === "screen-sync") state.screenSyncStart = clock; else state.timerElapsed = 0; });
+  $("#pauseDemo").addEventListener("click", () => {
+    if (state.tab === "audio-sync") { void toggleAudioPlayback(); return; }
+    state.paused = !state.paused; $("#pauseDemo").textContent = state.paused ? "▶" : "Ⅱ"; $("#pauseDemo").setAttribute("aria-label", state.paused ? "Play animation" : "Pause animation");
+  });
+  $("#resetView").addEventListener("click", () => { if (state.overlay) state.overlay.start = clock; else if (state.tab === "events") playEvent(); else if (state.tab === "controllers") playController(); else if (state.tab === "weather") state.weatherStart = clock; else if (state.tab === "audio-sync") { audioVideo.currentTime = 0; state.audioLevels.fill(0); state.audioLeft = 0; state.audioRight = 0; resetAudioVideoProcessor(); } else if (state.tab === "screen-sync") state.screenSyncStart = clock; else state.timerElapsed = 0; });
   window.addEventListener("resize", () => { updateSampleLine(); updateMobilePreviewVisibility(); });
   window.addEventListener("scroll", updateMobilePreviewVisibility, { passive: true });
 }
 function resetDemo() {
+  const audioVideo = $("#audioSyncVideo");
+  audioVideo.pause();
+  audioVideo.currentTime = 0;
   state = defaultState();
+  resetAudioVideoProcessor();
   clock = 0;
   if (customObjectUrl) { URL.revokeObjectURL(customObjectUrl); customObjectUrl = null; }
-  for (const [id, value] of Object.entries({ customBrightness: state.customBrightness, customSpeed: state.customSpeed, launchDuration: state.launchDuration, artSource: state.artSource, artMode: state.artMode, artRow: state.artRow, gameDisplay: "inherit", perfMetric: state.metric, perfDirection: state.direction, cpuLoad: state.cpu, cpuTemp: state.cpuTemp, gpuLoad: state.gpu, gpuTemp: state.gpuTemp, perfPalette: state.palette, perfResponse: state.response, coolColor: state.coolColor, middleColor: state.middleColor, hotColor: state.hotColor, coolTemp: state.coolTemp, hotTemp: state.hotTemp, timerDuration: state.timerDuration, timerScale: state.timerScale, timerRemaining: state.timerRemaining, timerColor: state.timerColor, timerSpeed: state.timerSpeed, controllerCount: state.padCount, padOne: state.padOne, padTwo: state.padTwo, padThree: state.padThree, padFour: state.padFour, controllerTarget: state.controllerTarget, controllerWhere: state.controllerWhere, chargeMode: state.chargeMode, alertWhere: state.alertWhere, lowThreshold: state.lowThreshold, padBrightness: state.padBrightness, padHealthy: state.padHealthy, padMedium: state.padMedium, padLow: state.padLow, padCharge: state.padCharge, padPlayerOne: state.padPlayerColours[0], padPlayerTwo: state.padPlayerColours[1], padPlayerThree: state.padPlayerColours[2], padPlayerFour: state.padPlayerColours[3], weatherCondition: state.weatherCondition, weatherWhere: state.weatherWhere, weatherUnit: state.weatherUnit, weatherBrightness: state.weatherBrightness, weatherCutoff: state.weatherCutoff, screenSyncStyle: state.screenSyncStyle, screenSyncScene: state.screenSyncScene, screenSyncBrightness: state.screenSyncBrightness, screenSyncIntensity: state.screenSyncIntensity, witcherHealth: state.witcherHealth, witcherStamina: state.witcherStamina, witcherToxicity: state.witcherToxicity, witcherAdrenaline: state.witcherAdrenaline, extraDark: state.extraDark, contextChoice: state.context, displayChoice: state.display })) { const element = $(`#${id}`); if (element) element.value = String(value); }
+  for (const [id, value] of Object.entries({ customBrightness: state.customBrightness, customSpeed: state.customSpeed, launchDuration: state.launchDuration, artSource: state.artSource, artMode: state.artMode, artRow: state.artRow, gameDisplay: "inherit", perfMetric: state.metric, perfDirection: state.direction, cpuLoad: state.cpu, cpuTemp: state.cpuTemp, gpuLoad: state.gpu, gpuTemp: state.gpuTemp, perfPalette: state.palette, perfResponse: state.response, coolColor: state.coolColor, middleColor: state.middleColor, hotColor: state.hotColor, coolTemp: state.coolTemp, hotTemp: state.hotTemp, timerDuration: state.timerDuration, timerScale: state.timerScale, timerRemaining: state.timerRemaining, timerColor: state.timerColor, timerSpeed: state.timerSpeed, controllerCount: state.padCount, padOne: state.padOne, padTwo: state.padTwo, padThree: state.padThree, padFour: state.padFour, controllerTarget: state.controllerTarget, controllerWhere: state.controllerWhere, chargeMode: state.chargeMode, alertWhere: state.alertWhere, lowThreshold: state.lowThreshold, padBrightness: state.padBrightness, padHealthy: state.padHealthy, padMedium: state.padMedium, padLow: state.padLow, padCharge: state.padCharge, padPlayerOne: state.padPlayerColours[0], padPlayerTwo: state.padPlayerColours[1], padPlayerThree: state.padPlayerColours[2], padPlayerFour: state.padPlayerColours[3], weatherCondition: state.weatherCondition, weatherWhere: state.weatherWhere, weatherUnit: state.weatherUnit, weatherBrightness: state.weatherBrightness, weatherCutoff: state.weatherCutoff, audioSyncExample: state.audioSyncExample, audioSyncStyle: state.audioSyncStyle, audioSyncReactivity: state.audioSyncReactivity, audioSyncBrightness: state.audioSyncBrightness, audioSyncPalette: state.audioSyncPalette, audioSyncColourHigh: state.audioSyncColours[0], audioSyncColourMiddle: state.audioSyncColours[1], audioSyncColourLow: state.audioSyncColours[2], screenSyncStyle: state.screenSyncStyle, screenSyncScene: state.screenSyncScene, screenSyncBrightness: state.screenSyncBrightness, screenSyncReactivity: state.screenSyncReactivity, screenSyncIntensity: state.screenSyncIntensity, screenSyncBlackThreshold: state.screenSyncBlackThreshold, witcherHealth: state.witcherHealth, witcherStamina: state.witcherStamina, witcherToxicity: state.witcherToxicity, witcherAdrenaline: state.witcherAdrenaline, extraDark: state.extraDark, contextChoice: state.context, displayChoice: state.display })) { const element = $(`#${id}`); if (element) element.value = String(value); }
+  audioVideo.src = AUDIO_EXAMPLES[state.audioSyncExample].source;
+  audioVideo.setAttribute("aria-label", `${AUDIO_EXAMPLES[state.audioSyncExample].title} gameplay used for the Audio Sync demonstration`);
+  audioVideo.load();
   $("#timerRemaining").max = String(state.timerDuration * 60);
   for (const [id, checked] of Object.entries({ perfHome: state.perfHome, recordIsolation: state.recordIsolation, padCharging: state.padCharging, weatherTopbar: state.weatherTopbar, screenSyncBlackBars: state.screenSyncBlackBars, witcherCombat: state.witcherCombat, reversePhysical: state.reversePhysical })) $(`#${id}`).checked = checked;
   $$("[data-game]").forEach((button) => button.classList.toggle("selected", button.dataset.game === state.game));
@@ -1249,7 +1942,7 @@ function resetDemo() {
   $("#customColours").hidden = true;
   $("#artRow").disabled = false;
   $("#pauseDemo").textContent = "Ⅱ";
-  syncEventUI(); syncControllerUI(); syncWeatherUI(); syncCustomizationUI(); syncLaunchUI(); updateOutputs(); loadArtwork(); loadLaunchArtwork(); setTab("overview", false);
+  syncEventUI(); syncControllerUI(); syncWeatherUI(); syncAudioUI(); syncCustomizationUI(); syncLaunchUI(); updateOutputs(); loadArtwork(); loadLaunchArtwork(); setTab("overview", false);
 }
 function openTabFromHash() {
   const tab = window.location.hash.slice(1);
@@ -1263,7 +1956,7 @@ function init() {
   bindControls();
   openTabFromHash();
   window.addEventListener("hashchange", openTabFromHash);
-  syncEventUI(); syncControllerUI(); syncWeatherUI(); updateOutputs(); loadArtwork();
+  syncEventUI(); syncControllerUI(); syncWeatherUI(); syncAudioUI(); updateOutputs(); loadArtwork();
   updateMobilePreviewVisibility();
   requestAnimationFrame(tick);
 }
