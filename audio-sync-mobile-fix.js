@@ -1,7 +1,10 @@
 /* Mobile-safe Audio Sync route patch.
-   Uses the playing media element directly instead of decoding the full MP4 again. */
+   Analyses a silent, synchronized media clone instead of decoding the full MP4. */
 (() => {
+  let analysisVideo = null;
+  let analysisSourceUrl = "";
   let sourceNode = null;
+  let silenceGain = null;
   let spectrumAnalyser = null;
   let leftAnalyser = null;
   let rightAnalyser = null;
@@ -10,6 +13,9 @@
   let leftTimeData = null;
   let rightTimeData = null;
   let graphError = null;
+  let userActivated = false;
+
+  const visibleVideo = () => $("#audioSyncVideo");
 
   const rms = (values) => {
     let sum = 0;
@@ -17,16 +23,74 @@
     return Math.sqrt(sum / Math.max(1, values.length));
   };
 
-  const graphReady = () => Boolean(spectrumAnalyser && leftAnalyser && rightAnalyser && audioContext);
+  const currentSource = () => {
+    const video = visibleVideo();
+    return video.currentSrc || new URL(video.getAttribute("src"), document.baseURI).href;
+  };
+
+  const ensureAnalysisVideo = () => {
+    const video = visibleVideo();
+    if (!analysisVideo) {
+      analysisVideo = document.createElement("video");
+      analysisVideo.preload = "auto";
+      analysisVideo.playsInline = true;
+      analysisVideo.loop = true;
+      analysisVideo.muted = false;
+      analysisVideo.volume = 1;
+      analysisVideo.tabIndex = -1;
+      analysisVideo.setAttribute("aria-hidden", "true");
+      analysisVideo.style.cssText = "position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px";
+      document.body.append(analysisVideo);
+    }
+
+    const source = currentSource();
+    if (source && source !== analysisSourceUrl) {
+      analysisSourceUrl = source;
+      analysisVideo.src = source;
+      analysisVideo.load();
+      const seek = () => {
+        try { analysisVideo.currentTime = video.currentTime || 0; } catch (_error) {}
+      };
+      if (analysisVideo.readyState >= 1) seek();
+      else analysisVideo.addEventListener("loadedmetadata", seek, { once: true });
+    }
+    return analysisVideo;
+  };
+
+  const graphReady = () => Boolean(spectrumAnalyser && leftAnalyser && rightAnalyser && audioContext && analysisVideo);
+
+  const syncAnalysisPlayback = () => {
+    const video = visibleVideo();
+    const analyserVideo = ensureAnalysisVideo();
+    analyserVideo.loop = video.loop;
+    analyserVideo.playbackRate = video.playbackRate || 1;
+
+    if (Number.isFinite(video.currentTime) && Number.isFinite(analyserVideo.currentTime)
+      && Math.abs(analyserVideo.currentTime - video.currentTime) > .12) {
+      try { analyserVideo.currentTime = video.currentTime; } catch (_error) {}
+    }
+
+    if (video.paused || video.ended) {
+      if (!analyserVideo.paused) analyserVideo.pause();
+      return;
+    }
+
+    if (userActivated && analyserVideo.paused) {
+      void analyserVideo.play().catch((error) => {
+        if (error?.name !== "NotAllowedError") graphError = error instanceof Error ? error : new Error(String(error));
+      });
+    }
+  };
 
   ensureAudioGraph = async function ensureAudioGraphMobile() {
     const Context = window.AudioContext || window.webkitAudioContext;
     if (!Context) throw new Error("Web Audio is unavailable in this browser");
-    const video = $("#audioSyncVideo");
+    if (navigator.userActivation?.isActive) userActivated = true;
+    const analyserVideo = ensureAnalysisVideo();
     if (!audioContext) audioContext = new Context({ sampleRate: 48000 });
 
     if (!sourceNode) {
-      sourceNode = audioContext.createMediaElementSource(video);
+      sourceNode = audioContext.createMediaElementSource(analyserVideo);
       spectrumAnalyser = audioContext.createAnalyser();
       spectrumAnalyser.fftSize = 2048;
       spectrumAnalyser.smoothingTimeConstant = 0;
@@ -37,27 +101,32 @@
       rightAnalyser.fftSize = 2048;
       leftAnalyser.smoothingTimeConstant = 0;
       rightAnalyser.smoothingTimeConstant = 0;
+      silenceGain = audioContext.createGain();
+      silenceGain.gain.value = 0;
 
       sourceNode.connect(spectrumAnalyser);
       sourceNode.connect(splitter);
       splitter.connect(leftAnalyser, 0);
       splitter.connect(rightAnalyser, 1);
-      sourceNode.connect(audioContext.destination);
+      sourceNode.connect(silenceGain);
+      silenceGain.connect(audioContext.destination);
 
       frequencyData = new Float32Array(spectrumAnalyser.frequencyBinCount);
       leftTimeData = new Float32Array(leftAnalyser.fftSize);
       rightTimeData = new Float32Array(rightAnalyser.fftSize);
     }
 
-    if (audioContext.state === "suspended") await audioContext.resume();
+    if (audioContext.state === "suspended" && userActivated) await audioContext.resume();
+    syncAnalysisPlayback();
     graphError = null;
   };
 
   analyseAudioNow = function analyseAudioNowMobile() {
-    const video = $("#audioSyncVideo");
+    const video = visibleVideo();
+    syncAnalysisPlayback();
     const now = performance.now();
     const processInterval = 60;
-    if (video.paused || video.ended || !graphReady() || audioContext.state !== "running") {
+    if (video.paused || video.ended || !graphReady() || audioContext.state !== "running" || analysisVideo.paused) {
       if (now - audioLastAnalysis >= processInterval) {
         audioLastAnalysis = now;
         decayAudioAnalysis();
@@ -145,22 +214,24 @@
   const originalSyncAudioPlaybackUI = syncAudioPlaybackUI;
   syncAudioPlaybackUI = function syncAudioPlaybackUIMobile() {
     originalSyncAudioPlaybackUI();
-    const video = $("#audioSyncVideo");
+    const video = visibleVideo();
     if (!video.paused && graphReady()) {
-      $("#audioSyncState").textContent = audioContext.state === "running" ? "Analysing source audio" : "Tap play to enable audio analysis";
-      $("#audioSyncTime").textContent = `${AUDIO_EXAMPLES[state.audioSyncExample].title} · ${formatTime(video.currentTime)} / ${Number.isFinite(video.duration) ? formatTime(video.duration) : "0:00"} · live media analysis`;
+      const active = userActivated && audioContext.state === "running" && !analysisVideo.paused;
+      $("#audioSyncState").textContent = active ? "Analysing source audio" : "Tap play to enable audio analysis";
+      $("#audioSyncTime").textContent = `${AUDIO_EXAMPLES[state.audioSyncExample].title} · ${formatTime(video.currentTime)} / ${Number.isFinite(video.duration) ? formatTime(video.duration) : "0:00"} · ${active ? "live media analysis" : "audio gesture required"}`;
     } else if (graphError) {
       $("#audioSyncState").textContent = "Audio analysis unavailable";
       $("#audioSyncTime").textContent = graphError.message || String(graphError);
     }
   };
 
-  const armAudio = () => {
+  const armAudio = (event) => {
+    if (event) userActivated = true;
     void ensureAudioGraph().then(() => {
       syncAudioPlaybackUI();
       syncScreenPlaybackUI();
     }).catch((error) => {
-      graphError = error instanceof Error ? error : new Error(String(error));
+      if (error?.name !== "NotAllowedError") graphError = error instanceof Error ? error : new Error(String(error));
       syncAudioPlaybackUI();
     });
   };
@@ -168,6 +239,6 @@
   document.addEventListener("pointerdown", armAudio, { passive: true });
   document.addEventListener("touchstart", armAudio, { passive: true });
   document.addEventListener("keydown", armAudio);
-  $("#audioSyncVideo")?.addEventListener("play", armAudio);
-  armAudio();
+  visibleVideo()?.addEventListener("play", () => armAudio());
+  void ensureAudioGraph().catch(() => {});
 })();
