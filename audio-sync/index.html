@@ -33,6 +33,10 @@
         '<title>GabeCubeAura Concept Lab</title>',
         '<title>Audio Sync · GabeCubeAura Concept Lab</title>'
       );
+      html = html.replace(
+        "Audio analysis reads the decoded source track, so the player's volume and mute controls never reduce the modelled LED response.",
+        "Audio analysis reads a synchronized local media source, so the visible player's volume and mute controls never reduce the modelled LED response."
+      );
 
       document.open();
       document.write(html);
