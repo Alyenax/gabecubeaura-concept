@@ -11,15 +11,16 @@
 
   syncAudioUI();
   setTab("audio-sync");
-  syncAudioPlaybackUI();
-  syncScreenPlaybackUI();
 
   const video = $("#audioSyncVideo");
   video.muted = true;
-  void video.play().catch(() => {
-    $("#audioSyncState").textContent = "Ready";
-    $("#audioSyncTime").textContent = "Autoplay was blocked. Tap play to start the demo and enable audio analysis.";
-  });
+  video.pause();
+  try { video.currentTime = 0; } catch (_error) {}
+
+  syncAudioPlaybackUI();
+  syncScreenPlaybackUI();
+  $("#audioSyncState").textContent = "Ready";
+  $("#audioSyncTime").textContent = "Tap Play Audio Sync to start the demo and enable audio analysis.";
 
   requestAnimationFrame(() => $("#lab")?.scrollIntoView({ block: "start" }));
 })();
