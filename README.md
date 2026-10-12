@@ -1,5 +1,11 @@
 # GabeCubeAura Concept Lab
 
+Optional support links appear in the project navigation and after the simulator.
+They open [Alyenax on Ko-fi](https://ko-fi.com/alyenax) only when selected. No
+Ko-fi embed, tracking script or donation prompt is loaded. Public releases and
+betas remain free and open source. Pages publishes from `main`; the
+`codex/kofi-visibility` preparation branch must not be merged before approval.
+
 A standalone, interactive product preview for [GabeCubeAura](https://github.com/Alyenax/GabeCubeAura). It simulates the official Steam Machine's 17-pixel light bar without installing Decky Loader, reading a Steam account, or writing to hardware.
 
 [Open Audio Sync directly](https://alyenax.github.io/gabecubeaura-concept/audio-sync/) with Silksong, Slow Prism, Screen Sync colours and the Fast response preset already selected.
