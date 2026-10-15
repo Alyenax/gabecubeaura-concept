@@ -4,6 +4,10 @@ A standalone, interactive product preview for [GabeCubeAura](https://github.com/
 
 [Open Audio Sync directly](https://alyenax.github.io/gabecubeaura-concept/audio-sync/) with Silksong, Slow Prism, Screen Sync colours and the Fast response preset already selected.
 
+[Try the development interface preview](https://alyenax.github.io/gabecubeaura-concept/interface-preview/):
+the Decky quick panel, full settings and three artwork examples. This is a
+code-based draft reconstruction, not a SteamOS screenshot or live hardware.
+
 The mockup includes a focused presentation of the current **GabeCubeAura 1.3.2 Lab Audio Sync engine** while preserving the earlier feature set. It includes:
 
 - Customization+ as an independent permanent display, with all 61 effects grouped under Steady, Light Events, Controllers, Weather and Game Launches;
