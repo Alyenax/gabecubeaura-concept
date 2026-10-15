@@ -151,3 +151,17 @@ a separate controller mockup. This local revision changes the following:
 - the browser suite now checks all controller counts, both colour meanings,
   editable player colours, all pattern choices, desktop, mobile and direct
   file opening.
+
+## Expanded lighting simulator, 2026-10-15
+
+Expanded the existing lighting simulator to the Lab 121 visual
+  families without creating a plugin release or a new hosting workflow.
+  Native 64 × 54 atlases include all 22 Realistic V2 weather loops and 35
+  assistant banks; RGB hashes and authored delays are retained. Added weather
+  and artwork Dashboards, both characters, image extension, ambience examples,
+  Home/game routes, independent brightness and explicit safety scenarios.
+  The assistant preview is silent and never opens a microphone or performs an
+  action. The page explains fidelity and hardware-only limits in
+  `SIMULATOR_COVERAGE.md`. Images load on selection. Kept the direct Audio Sync
+  route on manual Play and corrected its canonical URL/title. Existing media,
+  front-on chassis and the separate interface preview remain intact.

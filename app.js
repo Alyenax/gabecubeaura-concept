@@ -115,15 +115,16 @@ const CONTROLLER_OPTIONS = {
 };
 const WEATHER_OPTIONS = {
   clear_day: ["Sun glints", "Solar bloom"],
-  clear_night: ["Quiet constellation", "Silver hush"],
+  clear_night: ["Breathing moon", "Lunar bloom"],
   rain: ["Bluewater", "Pearl rain"],
   cloud: ["Passing shadow", "Passing shadows", "Cross & gather", "Slow convergence"],
+  cloud_night: ["Night passing shadow", "Night passing shadows", "Night cross & gather", "Night slow convergence"],
   breaks: ["Sun through clouds", "Sun, fading clouds"],
   breaks_night: ["Moon through clouds", "Moon, fading clouds"],
   snow: ["Melting snowfall", "Snow takes hold"],
   storm: ["Pulse and echoes", "Storm break"],
 };
-const WEATHER_ICONS = { clear_day: "☀", clear_night: "☾", rain: "☂", cloud: "☁", breaks: "⛅", breaks_night: "☾", snow: "❄", storm: "⚡" };
+const WEATHER_ICONS = { clear_day: "☀", clear_night: "☾", rain: "☂", cloud: "☁", cloud_night: "☁", breaks: "⛅", breaks_night: "☾", snow: "❄", storm: "⚡" };
 const WITCHER_SIGNS = {
   aard: [158, 214, 255], axii: [255, 255, 255], igni: [255, 79, 10],
   quen: [255, 205, 68], yrden: [200, 81, 255],
@@ -171,7 +172,7 @@ function defaultState() {
     controllerColourMode: "battery", padPlayerColours: ["#25c8f5", "#ffb43b", "#a777ff", "#4bd38a"],
     controllerScene: "duo", controllerVariants: { duo: "double-welcome", gauge: "tip", connect: "welcome", low: "beacon", charging: "breath" },
     padHealthy: "#00b42d", padMedium: "#e66e00", padLow: "#dc0c18", padCharge: "#0091dc",
-    weatherCondition: "clear_day", weatherVariants: { clear_day: 0, clear_night: 0, rain: 0, cloud: 1, breaks: 0, breaks_night: 0, snow: 1, storm: 0 },
+    weatherCondition: "clear_day", weatherVariants: { clear_day: 0, clear_night: 0, rain: 0, cloud: 1, cloud_night: 0, breaks: 0, breaks_night: 0, snow: 1, storm: 0 },
     weatherWhere: "off", weatherTopbar: false, weatherUnit: "celsius", weatherBrightness: 70, weatherCutoff: 0, weatherStart: 0,
     audioSyncExample: "silksong", audioSyncStyle: "hifi-crest", audioSyncReactivity: "balanced", audioSyncBrightness: 160,
     audioSyncPalette: "screen-sync", audioSyncColours: ["#00aaff", "#702aff", "#ff308c"],
@@ -1331,6 +1332,8 @@ function customizationFrame() {
 }
  function activeContext(placement) { return placement === "everywhere" || (placement === "home" && state.context === "home"); }
 function getCurrentOutput() {
+  const extended = window.GCAExpansion?.output();
+  if (extended) return extended;
   const countdownActive = state.timerRunning && state.timerRemaining > 0 && (state.timerSource !== "families" || state.context === "game");
   if (countdownActive && state.timerRemaining <= 300) return countdownFrame();
   if (state.overlay && (clock - state.overlay.start) / 1000 < state.overlay.duration) {
@@ -1405,7 +1408,8 @@ function drawPhysical(frame) {
   ctx.fillRect(0, centreY - height * .045, width, height * .09);
 }
 function renderStage() {
-  const output = getCurrentOutput();
+  const output = window.GCAExpansion?.process(getCurrentOutput()) || getCurrentOutput();
+  window.GCAExpansion?.draw();
   $("#audioSyncVideo").hidden = !["audio-sync", "screen-sync"].includes(state.tab);
   ledElements.forEach((element, index) => {
     const color = output.logical[index] || OFF;
@@ -1816,6 +1820,7 @@ function setTab(tab, configure = true) {
     $("#displayChoice").value = state.display;
   }
   requestAnimationFrame(updateSampleLine);
+  window.GCAExpansion?.selectTab(tab, configure);
 }
 function choosePreset(preset) {
   if (preset === "customization") setTab("customization");
@@ -2074,6 +2079,7 @@ function bindControls() {
   window.addEventListener("scroll", updateMobilePreviewVisibility, { passive: true });
 }
 function resetDemo() {
+  window.GCAExpansion?.reset();
   const audioVideo = $("#audioSyncVideo");
   audioVideo.pause();
   audioVideo.currentTime = 0;

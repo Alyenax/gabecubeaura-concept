@@ -2,6 +2,8 @@
 (() => {
   const requestedUrl = window.__GABECUBEAURA_AUDIO_SYNC_ROUTE__;
   if (requestedUrl) history.replaceState(null, "", requestedUrl);
+  document.title = "Audio Sync · GabeCubeAura Concept Lab";
+  document.querySelector('link[rel="canonical"]').href = "https://alyenax.github.io/gabecubeaura-concept/audio-sync/";
 
   state.audioSyncExample = "silksong";
   state.audioSyncStyle = "slow-prism";

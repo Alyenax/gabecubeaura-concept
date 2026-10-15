@@ -8,9 +8,12 @@ A standalone, interactive product preview for [GabeCubeAura](https://github.com/
 the Decky quick panel, full settings and three artwork examples. This is a
 code-based draft reconstruction, not a SteamOS screenshot or live hardware.
 
-The mockup includes a focused presentation of the current **GabeCubeAura 1.3.2 Lab Audio Sync engine** while preserving the earlier feature set. It includes:
+The simulator now covers the **Lab 121 visual families**, while keeping real
+hardware and service behaviour explicitly outside the browser. See
+[SIMULATOR_COVERAGE.md](SIMULATOR_COVERAGE.md) for the per-feature fidelity and limits.
+It includes:
 
-- Customization+ as an independent permanent display, with all 61 effects grouped under Steady, Light Events, Controllers, Weather and Game Launches;
+- Customization+ as an independent permanent display, with all 65 effects grouped under Steady, Light Events, Controllers, Weather and Game Launches;
 - one, two or three exact colours, hexadecimal editing, raw 34–255 brightness, speed and direction;
 - per-AppID Game Launches using two or three dominant colours extracted locally from Hero, Header or Capsule artwork;
 - custom two- and three-colour launch palettes retained separately per sample AppID, ten patterns and a 3–45 second timer;
@@ -22,6 +25,20 @@ The mockup includes a focused presentation of the current **GabeCubeAura 1.3.2 L
 - a live Screen Sync presentation using the same Silksong and The Witcher 3 videos, with the production 34 by 18, 10 fps processing model, Panorama and Ambient mappings, brightness, colour intensity and cinematic black-bar controls;
 - an explicitly experimental The Witcher 3 Lab for Steam AppID 292030, including vitality, stamina, toxicity, adrenaline and Sign previews plus the required setup commands;
 - the `GabeCubeAura Off` wording, distinct from disabling every GabeCubeAura output.
+- a native 64 × 54 dot-matrix Faceplate using all 22 Realistic V2 weather loops, including cloudy nights;
+- a common Dashboard overlay for weather and game artwork, six bottom-row examples, Celsius/Fahrenheit, 12/24-hour clocks, P1/P2 percentages or battery bars;
+- Gabe Assistant's 27 authored face banks and Companion's 8 interactive banks, preserving frame delays and one-shot/loop semantics; a silent conversation preview restores the current Home/game route;
+- two-colour adjustable-width Slow Prism mouth examples, independent eye/frame colours and Companion heart colour;
+- local artwork crop, Faceplate image extension, coordinated ambience examples and independent Home/in-game routes for both displays;
+- master on/off, light-bar brightness, Night gain, Faceplate brightness and explicitly simulated sleep, critical-temperature and Steam-ownership states.
+
+Native atlases are lossless PNG strips exported from the prepared runtime RGB
+frames. They load on selection, not all at startup. No GIF decoder, model,
+speech process or conversion job runs in the page. The Companion byte counts
+describe the original runtime GIFs (all at most 12,000 bytes), not the PNG
+transport or real serial latency. The assistant sequence is silent and never
+executes a command. The six Dashboard bottom-row modes include illustrative
+session/timer/performance layouts as well as ports of the approved native rows.
 
 Steam's native Patrol, Breathe, Rainbow and Solid presets are deliberately not imitated. GabeCubeAura Off is presented as the route that leaves Steam's authentic effect visible between temporary GabeCubeAura layers. Native download activity, repeated Valve writes and the fixed red critical thermal warning remain above the simulated permanent displays in the priority explanation.
 
@@ -37,12 +54,18 @@ Sample artwork is from the public Steam store pages for [Deep Rock Galactic](htt
 
 The front-on console silhouette uses the **156 mm width × 152 mm height** ratio in [Valve's Steam Machine specifications](https://store.steampowered.com/hardware/steammachine). Valve lists 162.4 mm depth, which a front view cannot show. Lighting and diffuser details remain an illustration, not a hardware-accuracy claim.
 
-The website has no dependencies, analytics or third-party runtime requests. Serve this directory over HTTP to test locally. HTTP is required for the most consistent browser media and Web Audio behavior:
+The website has no runtime dependencies, analytics or third-party runtime requests. Serve this directory over HTTP to test locally. HTTP is required for native Faceplate canvas reads, media and Web Audio behaviour:
 
 ```sh
 python3 -m http.server 8765
 ```
 
-To refresh event or weather frames after changing GabeCubeAura's renderer, keep the plugin repository in a sibling directory and run `python3 export_frames.py` or `python3 export_weather_frames.py`. The Playwright smoke test is `node test_site.mjs` when Playwright is available in the parent workspace.
+To refresh weather frames from an explicit checkout, set `GCA_PLUGIN_SOURCE`
+and run `python3 export_weather_frames.py`. To regenerate Faceplate/assistant
+atlases, run `python3 export_simulator_assets.py /absolute/plugin/checkout`.
+The exporter records the exact source commit. Only RGB assets and visual
+metadata are published, not plugin credentials, settings or speech models.
+The Playwright checks are `node test_site.mjs` and `node test_simulator.mjs`
+when Playwright is available in the parent workspace.
 
 GitHub Pages serves this repository directly from the root of its `main` branch. See [PUBLICATION_NOTES.md](PUBLICATION_NOTES.md) for the publication and beta-preview record.

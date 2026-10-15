@@ -6,18 +6,21 @@
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'">
   <meta name="theme-color" content="#0c131b">
-  <meta name="description" content="Try GabeCubeAura's Steam Machine lighting modes, Audio Sync, Screen Sync, four-controller layouts and experimental Witcher 3 HUD in an interactive simulator.">
+  <meta name="description" content="Try GabeCubeAura's 17-LED light bar, 64 × 54 Faceplate, weather and artwork Dashboards, two assistants, Audio Sync, Screen Sync and Home/game routes in an interactive simulator.">
   <meta property="og:title" content="GabeCubeAura Concept Lab">
   <meta property="og:description" content="Try GabeCubeAura's lighting modes and game-launch animations on a simulated 17-pixel Steam Machine light bar.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://alyenax.github.io/gabecubeaura-concept/">
-  <title>GabeCubeAura Concept Lab · Try the 17-LED light bar</title>
+  <title>GabeCubeAura Concept Lab · Light bar and Faceplate simulator</title>
   <link rel="canonical" href="https://alyenax.github.io/gabecubeaura-concept/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="simulator-expansion.css">
   <script src="event-frames.js" defer></script>
   <script src="weather-frames.js" defer></script>
   <script src="app.js" defer></script>
+  <script src="simulator-assets.js" defer></script>
+  <script src="simulator-expansion.js" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -33,22 +36,22 @@
       <div class="hero-copy">
         <p class="eyebrow"><span class="eyebrow-dot"></span> INTERACTIVE PRODUCT PREVIEW</p>
         <h1 id="hero-title">What could your <span>light bar</span> tell you?</h1>
-        <p class="hero-lead">Build a permanent scene with Customization+, sample game artwork, or let real gameplay audio drive all 17 LEDs. Then explore Screen Sync, the experimental Witcher 3 HUD, performance, playtime, Steam moments, four controllers and Weather.</p>
+        <p class="hero-lead">Explore all the visual families: 17 light-bar LEDs, a native 64 × 54 Faceplate, weather and artwork Dashboards, Gabe and Companion. Try colours, movements and Home/game routes, then let real gameplay drive Audio Sync and Screen Sync.</p>
         <div class="hero-actions"><a class="button primary" href="#lab">Open the simulator <span aria-hidden="true">↘</span></a><a class="button ghost" href="https://github.com/Alyenax/GabeCubeAura#readme" target="_blank" rel="noopener noreferrer">Read the project ↗</a></div>
-        <p class="hero-note"><strong>GabeCubeAura 1.3.2 Lab preview.</strong> Audio Sync and Screen Sync process the bundled gameplay locally. They do not connect to Steam, PipeWire or hardware.</p>
+        <p class="hero-note"><strong>GabeCubeAura · Lab 121 visual reference.</strong> Explore the light bar and native 64 × 54 Faceplate together. Local examples, no Steam connection or hardware access. <a href="interface-preview/">Explore the Decky interface ↗</a></p>
       </div>
       <div class="hero-art" aria-hidden="true"><div class="hero-cube"><div class="hero-cube-face"></div><div class="hero-led"></div><div class="hero-base"><b></b><b></b><b></b><span></span></div></div><div class="hero-caption">17 PIXELS · ONE SIGNAL AT A TIME</div></div>
     </section>
 
     <section class="intro-strip" aria-label="Available simulations">
-      <span>PLAY WITH</span><strong>Audio Sync</strong><strong>Screen Sync</strong><strong>Witcher 3 Lab</strong><strong>Customization+</strong><strong>Game launches</strong><strong>Artwork</strong><strong>CPU + GPU</strong><strong>Countdowns</strong><strong>Light events</strong><strong>4 Controllers</strong><strong>Weather</strong>
+      <span>PLAY WITH</span><strong>Faceplate</strong><strong>Dashboard</strong><strong>Gabe + Companion</strong><strong>Audio Sync</strong><strong>Screen Sync</strong><strong>Customization+</strong><strong>Game launches</strong><strong>Artwork</strong><strong>CPU + GPU</strong><strong>Countdowns</strong><strong>Light events</strong><strong>4 Controllers</strong><strong>Weather</strong>
     </section>
 
     <section class="lab-section" id="lab" aria-labelledby="lab-title">
       <div class="section-heading"><div><p class="eyebrow">THE SIMULATOR</p><h2 id="lab-title">Make it yours. See it live.</h2></div><p>Every control is a sample input. Nothing is sent anywhere; Reset restores the starting values.</p></div>
       <div class="workbench">
         <div class="settings-shell">
-          <div class="settings-header"><span class="settings-icon" aria-hidden="true">✦</span><div><strong>GabeCubeAura</strong><small>1.3.2 Lab · interactive settings</small></div><span class="mock-badge">LOCAL MEDIA</span></div>
+          <div class="settings-header"><span class="settings-icon" aria-hidden="true">✦</span><div><strong>GabeCubeAura</strong><small>Lab 121 · visual simulator</small></div><span class="mock-badge">LOCAL MEDIA</span></div>
           <nav class="tab-list" aria-label="GabeCubeAura features">
             <button class="tab active" data-tab="overview" aria-selected="true"><span>◎</span> Explore</button>
             <button class="tab" data-tab="customization" aria-selected="false"><span>✣</span> Customization+</button>
@@ -69,7 +72,7 @@
             <section class="pane active" data-pane="overview" aria-labelledby="overview-heading">
               <div class="pane-head"><p class="eyebrow">START HERE</p><h3 id="overview-heading">A signal for every moment.</h3><p>Pick a scenario, then open its controls to experiment.</p></div>
               <div class="scene-grid">
-                <button class="scene-card" data-preset="customization"><span class="scene-icon cyan">✣</span><strong>Customization+</strong><small>61 effects, exact colours and speed</small><span class="scene-arrow">↗</span></button>
+                <button class="scene-card" data-preset="customization"><span class="scene-icon cyan">✣</span><strong>Customization+</strong><small>65 effects, exact colours and speed</small><span class="scene-arrow">↗</span></button>
                 <button class="scene-card" data-preset="launches"><span class="scene-icon gold">↗</span><strong>Game launch</strong><small>Artwork colours for a timed entrance</small><span class="scene-arrow">↗</span></button>
                 <button class="scene-card" data-preset="artwork"><span class="scene-icon violet">▧</span><strong>Game artwork</strong><small>Sample a game's colour palette</small><span class="scene-arrow">↗</span></button>
                 <button class="scene-card" data-preset="performance"><span class="scene-icon cyan">◫</span><strong>CPU + GPU</strong><small>Two temperature-aware meters</small><span class="scene-arrow">↗</span></button>
@@ -78,7 +81,7 @@
                 <button class="scene-card" data-preset="audio-sync"><span class="scene-icon violet">≋</span><strong>Audio Sync</strong><small>Real gameplay audio across 17 bands</small><span class="scene-arrow">↗</span></button>
                 <button class="scene-card" data-preset="screen-sync"><span class="scene-icon blue">▥</span><strong>Screen Sync</strong><small>Gamescope colours across 17 LEDs</small><span class="scene-arrow">↗</span></button>
                 <button class="scene-card" data-preset="witcher"><span class="scene-icon amber">⚔</span><strong>Witcher 3 Lab</strong><small>Experimental vitality and stamina HUD</small><span class="scene-arrow">↗</span></button>
-                <button class="scene-card" data-preset="weather"><span class="scene-icon amber">☀</span><strong>Local weather</strong><small>Eighteen loops for eight sky conditions</small><span class="scene-arrow">↗</span></button>
+                <button class="scene-card" data-preset="weather"><span class="scene-icon amber">☀</span><strong>Local weather</strong><small>22 loops for nine sky conditions</small><span class="scene-arrow">↗</span></button>
                 <button class="scene-card" data-preset="notification"><span class="scene-icon blue">✧</span><strong>Notification</strong><small>A short signal, then back to normal</small><span class="scene-arrow">↗</span></button>
                 <button class="scene-card" data-preset="achievement"><span class="scene-icon gold">✦</span><strong>Achievement</strong><small>Give a win its own celebration</small><span class="scene-arrow">↗</span></button>
               </div>
@@ -86,7 +89,7 @@
             </section>
 
             <section class="pane" data-pane="customization" aria-labelledby="customization-heading">
-              <div class="pane-head"><p class="eyebrow">PERMANENT DISPLAY · 61 EFFECTS</p><h3 id="customization-heading">Your colours. Your rhythm.</h3><p>Choose a proven movement from Light Events, Controllers, Weather or Game Launches, then remap it to one, two or three precise colours.</p></div>
+              <div class="pane-head"><p class="eyebrow">PERMANENT DISPLAY · 65 EFFECTS</p><h3 id="customization-heading">Your colours. Your rhythm.</h3><p>Choose a proven movement from Light Events, Controllers, Weather or Game Launches, then remap it to one, two or three precise colours.</p></div>
               <label class="field">Pattern<select id="customPattern"></select></label>
               <div class="form-grid"><label class="field">Palette<select id="customPaletteCount"><option value="1">1 colour</option><option value="2" selected>2 colours</option><option value="3">3 colours</option></select></label><label class="field">Direction<select id="customDirection"><option value="forward">Left to right</option><option value="reverse">Right to left</option></select></label></div>
               <div class="precise-colours" id="customizationColours" aria-label="Customization colours">

@@ -1,0 +1,15 @@
+/* Shared existing simulator shell, not a SteamOS screenshot. */
+.sim-global{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 17px;background:#10232c;border-bottom:1px solid #375460;font-size:12px}
+.sim-global label{display:flex;align-items:center;gap:7px}.sim-global input[type=range]{width:95px}.sim-global output{min-width:38px;text-align:right}
+.sim-face{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;height:96%;max-width:96%;aspect-ratio:64/54;background:#010409;border-radius:3px;image-rendering:pixelated}
+.sim-face[hidden]{display:none}.sim-face-detail{padding:9px 17px;background:#111d27;color:#9bbbc6;font-size:11px;line-height:1.5}
+.sim-face-detail[hidden]{display:none}.sim-coverage{margin-top:20px}.sim-coverage summary,.sim-advanced summary{color:#b7e8df;cursor:pointer;font-size:13px;padding:12px 0}
+.sim-coverage ul{padding-left:20px;color:#bbccd3;font-size:12px;line-height:1.7}.sim-coverage a{color:#a1e9df}
+.sim-phase{display:flex;gap:5px;flex-wrap:wrap;margin:12px 0}.sim-phase span{padding:6px 8px;border-radius:4px;background:#162630;color:#9db7c0;font-size:11px}.sim-phase .active{background:#30564c;color:#caffee}
+.sim-status{font-size:12px;color:#bcdfd8;line-height:1.5;margin:12px 0}.sim-advanced{border-top:1px solid #36525d;margin-top:16px}.sim-advanced .field-help{margin-top:4px}
+.sim-evidence{font-size:11px;color:#a1b7bf;line-height:1.6;margin-top:16px}.sim-evidence a{color:#a6ded9}
+.sim-error{color:#ffb8ac}.sim-two{display:grid;grid-template-columns:1fr 1fr;gap:9px}.sim-commands{font-size:12px;line-height:1.7;color:#c0d3da;padding-left:18px}
+.sim-mobile-matrix{display:none}.hero-note a{color:#b3e6de}.stage-context{height:auto;min-height:37px;flex-wrap:wrap;padding-top:7px;padding-bottom:7px}.stage-context #contextLabel{flex:1;min-width:130px}.logical-head>span{white-space:normal}.settings-header small{white-space:normal}
+.hero-art:before{width:min(390px,100%)}
+@media(max-width:560px){.sim-two{grid-template-columns:1fr}.sim-global{padding:10px}.sim-global label{min-height:32px}.sim-global input[type=range]{width:80px}.stage-mini{margin-left:0}}
+@media(prefers-reduced-motion:reduce){.sim-face{image-rendering:pixelated}}

@@ -24,7 +24,7 @@ try {
   page.on("request", (request) => { if (request.url().endsWith("-frames.json")) jsonRequests.push(request.url()); });
   await page.goto(url, { waitUntil: "networkidle" });
   assert.match(await page.title(), /GabeCubeAura Concept Lab/);
-  assert.match(await page.locator("body").innerText(), /GabeCubeAura 1\.3\.2 Lab preview/);
+  assert.match(await page.locator("body").innerText(), /Lab 121 visual reference/);
   assert.equal(await page.locator('[data-pane="witcher"] .eyebrow').textContent(), "APPID 292030 · EXPERIMENTAL");
   assert.equal(await page.locator('link[rel="canonical"]').getAttribute("href"), "https://alyenax.github.io/gabecubeaura-concept/");
   const publicLinks = await page.locator('a[href*="github.com/"]').evaluateAll((links) => links.map((link) => link.href));
@@ -45,10 +45,10 @@ try {
     weatherVariants: Object.values(globalThis.GABECUBEAURA_WEATHER_FRAMES?.frames || {}).reduce((sum, variants) => sum + variants.length, 0),
     weatherLoopsWithLight: Object.values(globalThis.GABECUBEAURA_WEATHER_FRAMES?.frames || {}).flat().filter((loop) => loop.some((frame) => frame.some((pixel) => pixel.some((channel) => channel > 0)))).length,
   }));
-  assert.deepEqual(frameCoverage, { events: 19, eventLoopsWithLight: 19, weatherConditions: 8, weatherVariants: 18, weatherLoopsWithLight: 18 });
+  assert.deepEqual(frameCoverage, { events: 19, eventLoopsWithLight: 19, weatherConditions: 9, weatherVariants: 22, weatherLoopsWithLight: 22 });
 
   await page.locator('[data-tab="customization"]').click();
-  assert.equal(await page.locator("#customPattern option").count(), 61);
+  assert.equal(await page.locator("#customPattern option").count(), 65);
   assert.equal(await page.locator('#customPattern option[value="steady"]').count(), 1);
   assert.equal(await page.locator('#customPattern option[value="ripple"]').count(), 1);
   assert.equal(await page.locator('#customPattern option[value="event:achievement-supernova"]').count(), 1);
@@ -425,6 +425,7 @@ try {
   directAudio.on("pageerror", (error) => errors.push(`audio-sync route: ${error.message}`));
   directAudio.on("response", (response) => { if (!response.ok()) directAudioFailures.push(`${response.status()} ${response.url()}`); });
   await directAudio.goto(new URL("audio-sync/", url).toString(), { waitUntil: "domcontentloaded" });
+  await directAudio.waitForFunction(() => document.querySelector('[data-tab="audio-sync"]')?.getAttribute('aria-selected') === 'true');
   assert.equal(await directAudio.locator('[data-tab="audio-sync"]').getAttribute("aria-selected"), "true");
   assert.equal(await directAudio.locator("#audioSyncExample").inputValue(), "silksong");
   assert.equal(await directAudio.locator("#audioSyncStyle").inputValue(), "slow-prism");
@@ -439,6 +440,8 @@ try {
       video.addEventListener("error", () => reject(new Error("direct Audio Sync gameplay video failed to load")), { once: true });
     }
   }));
+  assert.equal(await directAudio.locator("#audioSyncVideo").evaluate((video) => video.paused), true);
+  await directAudio.locator('#audioSyncPlay').click();
   await directAudio.waitForFunction(() => !document.querySelector("#audioSyncVideo").paused);
   assert.equal(await directAudio.locator("#audioSyncVideo").evaluate((video) => video.muted), true);
   assert.equal(await directAudio.locator("#audioSyncVideo").evaluate((video) => video.currentSrc.endsWith("assets/karmelita-prime.mp4")), true);
@@ -449,7 +452,7 @@ try {
   directFile.on("pageerror", (error) => errors.push(`file:// ${error.message}`));
   await directFile.goto(pathToFileURL(path.resolve("index.html")).href, { waitUntil: "load" });
   assert.equal(await directFile.evaluate(() => Object.keys(globalThis.GABECUBEAURA_EVENT_FRAMES || {}).length), 19);
-  assert.equal(await directFile.evaluate(() => Object.keys(globalThis.GABECUBEAURA_WEATHER_FRAMES?.frames || {}).length), 8);
+  assert.equal(await directFile.evaluate(() => Object.keys(globalThis.GABECUBEAURA_WEATHER_FRAMES?.frames || {}).length), 9);
   await directFile.locator('[data-tab="customization"]').click();
   await directFile.locator("#customPattern").selectOption("event:achievement-supernova");
   await directFile.locator("#customPreview").click();
@@ -501,7 +504,7 @@ try {
   const overflow = await mobile.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   assert.ok(overflow <= 1, `mobile horizontal overflow: ${overflow}px`);
   assert.deepEqual(errors, []);
-  console.log("PASS: GabeCubeAura 1.3 lab, live Audio Sync media analysis, Screen Sync, experimental Witcher HUD, four-controller simulator, file:// datasets, all major tabs and 390px layout");
+  console.log("PASS: Lab 121 light-bar catalogue, live Audio Sync media analysis, Screen Sync, experimental Witcher HUD, four-controller simulator, file:// datasets, all major tabs and 390px layout");
 } finally {
   await browser.close();
 }
