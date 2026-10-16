@@ -4,17 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'">
   <title>GabeCubeAura · Interactive interface preview</title>
   <meta name="description" content="Explore GabeCubeAura's Decky panel, every settings section, artwork library and assistant setup in a browser-local documentation preview.">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="interface.css">
   <script src="source-catalog.js" defer></script>
   <script src="../simulator-assets.js" defer></script>
+  <script src="studio.bundle.js" defer></script>
   <script src="interface.js" defer></script>
 </head>
 <body>
-  <header class="site-links"><a href="https://github.com/Alyenax/GabeCubeAura#readme" target="_blank" rel="noopener noreferrer">Project README ↗</a><a href="../#lab" target="_blank" rel="noopener noreferrer">Lighting simulator ↗</a><button id="reset-preview" type="button">Reset preview</button></header>
+  <header class="site-links"><a href="https://github.com/Alyenax/GabeCubeAura#readme" target="_blank" rel="noopener noreferrer">Project README ↗</a><a href="../#lab" target="_blank" rel="noopener noreferrer">Lighting simulator ↗</a><a href="?page=screensaver">Animated Screensaver Studio · Lab 131</a><button id="reset-preview" type="button">Reset preview</button></header>
   <main>
     <section class="demo-controls" aria-label="Preview controls">
       <label>View<select id="preview-view"><option value="quick">Decky panel</option><option value="settings">Full settings</option><option value="setup">First-run setup</option></select></label>
@@ -29,7 +30,7 @@
       <section id="setup-content" hidden aria-label="First-run setup"></section>
       <p class="local-status" role="status" id="action-status">Preview only. No Steam, device or account connection.</p>
     </section>
-    <p class="limits">English documentation preview based on Lab 121. Controls change browser-local example settings, not your plugin. Readings, downloads, preparation and verification are simulated. No microphone, hardware, API key, GitHub authentication or Steam action is used. Native Steam typography, focus and spacing are approximated.</p>
+    <p class="limits">English documentation preview updated to Lab 131. Animated Screensaver Studio renders the actual Lab 131 component with browser-only service adapters. Controls change example settings, not your plugin. Readings, downloads, preparation and verification are simulated. No microphone, hardware, API key, GitHub authentication or Steam action is used. Native Steam typography, focus and spacing are approximated.</p>
     <details class="coverage"><summary>Coverage and limitations</summary><div id="coverage-content"></div></details>
   </main>
   <dialog id="preview-dialog" aria-labelledby="dialog-title"><form method="dialog"><h2 id="dialog-title"></h2><div id="dialog-body"></div><div class="dialog-actions"><button value="cancel">Cancel</button><button id="dialog-confirm" value="confirm">Confirm</button></div></form></dialog>

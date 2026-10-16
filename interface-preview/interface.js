@@ -7,7 +7,7 @@
   const slug = value => String(value).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
   const options = list => list.map(v => ({ value: v.data ?? v.value, label: v.label }));
   const GAMES = { witcher: { title: 'The Witcher 3: Wild Hunt', appid: 292030 }, drg: { title: 'Deep Rock Galactic', appid: 548430 }, balatro: { title: 'Balatro', appid: 2379780 } };
-  const nav = [['bar', 'Light bar'], ['faceplate', 'Faceplate displays'], ['artwork', 'Faceplate artwork'], ['signals', 'Signals and automation'], ['weather', 'Weather'], ['updates', 'Updates'], ['advanced', 'Advanced']];
+  const nav = [['bar', 'Light bar'], ['signals', 'Signals and automation'], ['weather', 'Weather'], ['screensaver', 'Animated Screensaver Studio'], ['faceplate', 'Faceplate displays'], ['artwork', 'Faceplate artwork'], ['updates', 'Updates'], ['advanced', 'Advanced']];
   const groups = { bar: [['routing', 'Display routing'], ['customization', 'Customization+'], ['bar-artwork', 'Light bar artwork colours'], ['performance', 'Performance'], ['screen-sync', 'Screen Sync'], ['audio-sync', 'Audio Sync']], signals: [['assistant', 'Voice assistant'], ['profiles', 'Ambience profiles'], ['events', 'Light events'], ['controllers', 'Controllers'], ['launches', 'Game launches'], ['playtime', 'Playtime']] };
   const titles = Object.fromEntries([...nav, ...Object.values(groups).flat()]);
   const parent = page => groups.bar.some(([id]) => id === page) ? 'bar' : groups.signals.some(([id]) => id === page) ? 'signals' : page;
@@ -22,10 +22,10 @@
     customization: fields('CustomizationPanel'), 'bar-artwork': fields('artwork'), performance: fields('performance'),
     'screen-sync': fields('ScreenSyncPanel'), 'audio-sync': [],
     faceplate: [...fields('pixel-settings'), ...fields('FaceplateBrightnessSlider'), ...fields('PixelStudioWeatherCatalog')],
-    artwork: [], assistant: fields('GabeAssistantPanel', 'assistant.'), profiles: fields('AmbienceProfilesPanel', 'profile.'),
+    artwork: [], screensaver: [], assistant: fields('GabeAssistantPanel', 'assistant.'), profiles: fields('AmbienceProfilesPanel', 'profile.'),
     events: [], controllers: [], launches: fields('launches'), playtime: fields('CountdownPanel'),
     weather: fields('WeatherPanel'), updates: fields('updates'),
-    advanced: [...fields('CompatibilityPanel'), ...fields('FlashProtectionPanel'), ...fields('advanced')],
+    advanced: [...fields('CompatibilityPanel'), ...fields('FlashProtectionPanel').filter(f => f.label !== 'Transfer limits and statistics'), ...fields('advanced')],
   };
   const eventVariants = S.catalogs.EVENT_VARIANTS, controllerVariants = S.catalogs.CONTROLLER_VARIANTS;
   pages.events.push(custom('ToggleField', 'Steam event animations', 'events_enabled', { section: 'Light events', description: entry('EventsPanel', 'Steam event animations').description }));
@@ -246,13 +246,14 @@
   function pageHeading(container, title, back) { container.innerHTML = `<div class="page-heading"><h1>${escape(title)}</h1>${back ? `<button data-back="${back}">Back to ${escape(titles[back])}</button>` : ''}</div>`; }
   function settings() {
     const container = $('#settings-content'); pageHeading(container, titles[page] || page, groups[parent(page)] && page !== parent(page) ? parent(page) : null);
+    if (page === 'screensaver') { const mount=document.createElement('div'); mount.id='studio-root';container.append(mount); window.GCAStudioDemo.mount(mount);return; }
     if (groups[page]) { const p = document.createElement('p'); p.className = 'group-description'; p.textContent = page === 'bar' ? 'Choose a display, adjust its appearance or set the global brightness. Changes below stay in this preview.' : 'Configure the assistant, profiles and the temporary signals that can take over your displays.'; container.append(p); for (const [id, title] of groups[page]) { const row = document.createElement('div'); row.className = 'group-link'; row.innerHTML = `<span>${title}</span><button data-open="${id}">Open</button>`; container.append(row); } return; }
     if (page === 'artwork') { artworkPage(container); return; }
     if (page === 'profiles') { profilesPage(container); return; }
     if (page === 'assistant') container.insertAdjacentHTML('beforeend', sampleNote('All commands, modules and microphone states below are examples. No audio is captured or played. <b>Downloads are simulated, not real installations.</b>'));
     if (page === 'weather') container.insertAdjacentHTML('beforeend', sampleNote(`Location: <b>${escape(values.weather_location || 'Not selected')}</b> · example 12°C · rain. No weather service is queried.<span class="weather-icon-sample" role="img" aria-label="Selected top-bar icon family">${S.catalogs.WEATHER_ICON_SVGS[values.weather_icon_style || 'current'][values.weather_condition]}</span>`));
-    if (page === 'faceplate') container.insertAdjacentHTML('beforeend', sampleNote(`Faceplate: <b>${connected() ? 'connected (sample)' : 'not connected (sample)'}</b> · SteamGridDB: <b>${apiLabel()}</b>. No serial writes occur.`));
-    if (page === 'updates') container.insertAdjacentHTML('beforeend', sampleNote(`Installed example: Lab 121. GitHub: <b>${githubState === 'authorized' ? 'example connection only' : githubState}</b>. This page cannot install, roll back or authenticate.`));
+    if (page === 'faceplate') container.insertAdjacentHTML('beforeend', sampleNote(`Faceplate: <b>${connected() ? 'connected (sample)' : 'not connected (sample)'}</b> · SteamGridDB: <b>${apiLabel()}</b>. No serial writes occur.`) + '<section class="settings-group"><h2>Faceplate memory protection</h2><details class="disclosure"><summary>Transfer limits and statistics</summary><p class="hint">Upload protection is on · Sample counters: 4 confirmed new GIF transfers this session. One animated GIF is one transfer, not one transfer per frame. Physical endurance remains unknown. Change upload protection in Advanced. No hardware transaction is confirmed by this preview.</p></details></section>');
+    if (page === 'updates') container.insertAdjacentHTML('beforeend', sampleNote(`Installed example: Lab 131. GitHub: <b>${githubState === 'authorized' ? 'example connection only' : githubState}</b>. This page cannot install, roll back or authenticate.`));
     if (page === 'advanced') container.insertAdjacentHTML('beforeend', sampleNote('Diagnostics stay here, not under Faceplate displays. Exported files contain only this preview’s sample settings. No real log is read or sent.'));
     renderFields(container, pages[page] || []);
     if (['faceplate', 'weather', 'assistant', 'customization', 'events', 'controllers', 'launches', 'playtime', 'performance', 'bar-artwork', 'screen-sync', 'audio-sync'].includes(page)) container.insertAdjacentHTML('beforeend', `<canvas class="native-preview" data-native width="640" height="540" hidden aria-label="64 by 54 native visual example"></canvas><p class="preview-caption" data-preview-caption></p><div class="palette" data-bar-palette aria-label="Example 17-LED palette">${'<i></i>'.repeat(17)}</div>`);
@@ -292,13 +293,14 @@
     container.insertAdjacentHTML('beforeend', `<div class="toolbar">${setupStep > 1 ? '<button data-setup-back>Back</button>' : ''}<button class="primary" data-setup-next>${setupStep === 3 ? 'Finish example setup' : 'Continue'}</button></div><div data-city-results></div>`);
   }
   function render() {
+    window.GCAStudioDemo?.unmount();
     clearTimeout(previewTimer); previewTimer = null; currentPreview = null; previewGeneration++;
     shell(); if (view === 'quick') quick(); else if (view === 'setup') setup(); else settings();
   }
   function confirmDialog(title, body, action, warning = false) {
     const dialog = $('#preview-dialog'); $('#dialog-title').textContent = title; $('#dialog-title').classList.toggle('warning-title', warning);
     $('#dialog-body').innerHTML = body; $('#dialog-confirm').textContent = warning ? 'I understand · use this example' : 'Confirm';
-    dialog.addEventListener('close', () => { if (dialog.returnValue === 'confirm') action(); }, { once: true }); dialog.showModal();
+    dialog.addEventListener('close', () => { if (dialog.returnValue === 'confirm') { if (title === 'Reset the browser preview?') window.GCAStudioDemo?.reset(); action(); } }, { once: true }); dialog.showModal();
   }
   function riskReview(action) {
     confirmDialog('Experimental Faceplate CPU/GPU updates', '<p>CPU/GPU information requires repeatedly uploading new GIFs to persistent Faceplate memory. Hardware endurance is unknown.</p><p>Default refresh: <b>5 seconds</b>, adjustable down to <b>1 second</b>. Accepted CPU/GPU updates bypass the 120-per-hour GIF limit.</p><p class="risk-red">You enable this experimental feature at your own risk. Frequent writes may cause irreversible wear or failure. No hardware lifetime or recovery is guaranteed.</p><p>This is a simulated confirmation. Nothing is uploaded.</p>', () => { values.performance_risk_accepted = true; action(); render(); say('Risk accepted for this browser example only.'); }, true);
@@ -430,7 +432,7 @@
     if (label === 'Disconnect Private Lab') { githubState = 'disconnected'; render(); say('Example GitHub connection removed.'); return; }
     if (label === 'Open GitHub device authorization') { confirmDialog('GitHub authorization example', '<p>The installed plugin opens GitHub’s device flow. This preview does not generate a code or connect an account.</p>', () => say('Authorization example inspected.')); return; }
     if (['Check for updates', 'Check again'].includes(label)) { say('Simulated check: example Lab 121 selected. No release endpoint was queried.'); return; }
-    if (label === 'View release notes') { confirmDialog('Example release notes · Lab 121', '<p>Development interface, Faceplate memory protection and explicit CPU/GPU risk acceptance.</p><p>Illustrative local text, not a live release check.</p>', () => {}); return; }
+    if (label === 'View release notes') { confirmDialog('Example release notes · Lab 131', '<p>Animated Screensaver Studio: collection, preview, preparation and settings. Optional independent Faceplate framing and prepared GIF preview.</p><p>Illustrative local text, not a live release check.</p>', () => {}); return; }
     if (['Download update', 'Restore', 'Return to Lab 114', 'Prepare previous version'].includes(label)) { confirmDialog('Simulated update or rollback', '<p>This rehearses the confirmation only. No archive is downloaded, plugin replaced or Decky service restarted.</p>', () => say('Example update/rollback completed. Installed software is unchanged.')); return; }
     if (label === 'Dismiss update error') { say('Example error dismissed.'); return; }
     if (label === 'Export configuration JSON') { downloadSample('settings'); return; }
@@ -558,8 +560,10 @@
       confirmDialog('Import browser-example settings?', '<p>Only recognised preview fields will be applied. No real plugin settings are read or changed.</p>', () => { Object.assign(values, patch); render(); say('Example configuration imported.'); });
     } catch (error) { say(`Import refused: ${error.message}`); } finally { event.target.value = ''; }
   };
-  $('#coverage-content').innerHTML = `<p>Reference: Lab 121, ${S.source_commit.slice(0, 7)}. All seven sidebar sections, twelve grouped pages and the first-run flow are browsable. Control labels, option lists and ranges are extracted from the actual source.</p><ul><li>Local state: routes, colours with HEX/RGB, assistant setup, profiles, artwork library, assignments, preparation progress, warnings, updates and diagnostics.</li><li>Conditional controls and advanced groups are inspectable. Preview deletes and assignments update immediately.</li><li>Hardware/service actions use labelled sample outcomes, never successful real-device claims. Native visual examples use existing prepared RGB frames.</li><li>Administration and model downloads are rehearsals only. No real API key, login, network diagnostic, microphone, game command or hardware transaction occurs.</li><li>The lighting simulator remains separate for full effect choreography and media analysis.</li></ul>`;
+  $('#coverage-content').innerHTML = `<p>Reference: Lab 131, ${S.source_commit.slice(0, 7)}. All eight sidebar sections, twelve grouped pages and the first-run flow are browsable. Control labels, option lists and ranges are extracted from the actual source.</p><ul><li>Animated Screensaver Studio renders the actual React component and shared player. Its four spaces include independent Faceplate framing, prepared GIF preview, and simulated preparation, tools and Steam installation.</li><li>Local state: routes, colours with HEX/RGB, assistant setup, profiles, artwork library, assignments, preparation progress, warnings, updates and diagnostics.</li><li>Conditional controls and advanced groups are inspectable. Preview deletes and assignments update immediately.</li><li>Hardware/service actions use labelled sample outcomes, never successful real-device claims. Native visual examples use existing prepared RGB frames.</li><li>Administration and model downloads are rehearsals only. No real API key, login, network diagnostic, microphone, game command or hardware transaction occurs.</li><li>The lighting simulator remains separate for full effect choreography and media analysis.</li></ul>`;
   window.GCAInterfacePreview = { navigate, inspect: () => ({ view, page, situation, game, settings: { ...values }, library: library.map(i => ({ ...i })), profiles: profiles.map(p => ({ ...p })), apiState, moduleStates: { ...moduleStates }, prepared, preparing }), pages: () => Object.fromEntries(Object.entries(pages).map(([id, fs]) => [id, fs.map(f => ({ label: f.label, key: f.key, type: f.type, source: f.source || null }))])) };
+  window.GCAInterfacePreview.exampleKey = value => { if (['absent','detected','verified'].includes(value)) apiState=value; };
   setInterval(() => { const el = $('[data-timer-status]'); if (el && timerDeadline) { const seconds = Math.max(0, Math.ceil((timerDeadline - Date.now()) / 1000)); el.textContent = seconds ? `Example timer: ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} remaining.` : 'Example timer finished.'; if (!seconds) timerDeadline = 0; } }, 1000);
+  if (new URLSearchParams(location.search).get('page') === 'screensaver') { view='settings';page='screensaver';situation='home-connected'; }
   render();
 })();

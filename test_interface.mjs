@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 const url = process.env.GCA_INTERFACE_URL || 'http://127.0.0.1:4200/interface-preview/';
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.env.GCA_CHROME ? {executablePath:process.env.GCA_CHROME} : {}) });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const errors = [], requests = [], failures = [];
 page.on('pageerror', e => errors.push(e.message));
@@ -10,13 +10,14 @@ page.on('response', r => { if (!r.ok()) failures.push(r.status() + ' ' + r.url()
 const go = async id => page.evaluate(id => GCAInterfacePreview.navigate(id), id);
 const field = key => page.locator(`[data-setting="${key}"]`);
 const action = label => page.locator('.settings-row').filter({ has: page.locator('.label', { hasText: label }) }).getByRole('button').first();
-const accept = async () => { await page.locator('#dialog-confirm').click(); await page.waitForTimeout(50); };
+const accept = async () => { await Promise.all([page.evaluate(() => new Promise(resolve => document.querySelector('#preview-dialog').addEventListener('close', () => resolve(true), {once:true}))), page.locator('#dialog-confirm').click()]); };
 try {
   await page.goto(url); await page.waitForFunction(() => window.GCAInterfacePreview);
   const ids = await page.evaluate(() => Object.keys(GCAInterfacePreview.pages()));
-  assert.equal(ids.length, 17);
+  assert.equal(ids.length, 18);
   for (const id of ids) {
     await go(id);
+    if(id==='screensaver'){await page.waitForSelector('.studio-nav');continue;}
     const checks = await page.evaluate(() => ({ empty: [...document.querySelectorAll('select[data-setting]')].filter(e => !e.options.length).map(e => e.id), ids: [...document.querySelectorAll('[id]')].map(e => e.id), controls: document.querySelectorAll('#settings-content [data-setting],#settings-content [data-action]').length }));
     assert.deepEqual(checks.empty, [], id);
     assert.equal(new Set(checks.ids).size, checks.ids.length, `duplicate IDs on ${id}`);
@@ -113,5 +114,5 @@ try {
   assert.deepEqual(errors, []); assert.deepEqual(failures, []);
   assert.ok(requests.every(r => new URL(r).origin === new URL(url).origin), 'No external services accessed');
   await page.setViewportSize({ width: 1280, height: 900 }); await go('routing'); await page.screenshot({ path: '/private/tmp/gca-interface-final.png', fullPage: true });
-  console.log('PASS: 7 sidebar sections, 12 grouped pages, 303 control definitions, navigation, persistence, risk cancel/accept, library prepare/delete/assign, assistant readiness, native previews, profiles, onboarding and 320–1024px layouts. No external request.');
+  console.log('PASS: 8 sidebar sections, Studio mount, navigation, persistence, risk cancel/accept, library prepare/delete/assign, assistant readiness, native previews, profiles, onboarding and 320–1024px layouts. No external request.');
 } finally { await browser.close(); }

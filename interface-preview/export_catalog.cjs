@@ -1,7 +1,7 @@
 /* Offline source audit. Reads JSX definitions, never imports the plugin runtime. */
 const fs = require('node:fs'), path = require('node:path'), cp = require('node:child_process');
 const sourceRoot = path.resolve(process.argv[2]);
-const ts = require(require.resolve('typescript', { paths: [sourceRoot] }));
+const ts = require(require.resolve('typescript', { paths: [sourceRoot, __dirname] }));
 const files = ['src/index.tsx','src/components/GabeAssistantPanel.tsx','src/components/AmbienceProfilesPanel.tsx','src/components/FlashProtectionPanel.tsx'];
 const allVariables = new Map(), trees = [];
 for (const file of files) {

@@ -1,0 +1,686 @@
+/* Shared offline Studio player, adapted under MIT from SteamOS Animated Screensaver.
+   No network or input interception. The optional native bridge cannot own TV lifecycle. */
+(function (global) {
+  "use strict";
+  const defaults = {
+    sceneDuration: 24,
+    shuffle: true,
+    transition: "crossfade",
+    showLogos: true,
+    showCover: true,
+    coverPosition: "beside-title",
+    framing: "original",
+    staticFallback: false,
+    reducedMotion: false,
+    language: "en",
+  };
+  function localMedia(value) {
+    if (
+      typeof value !== "string" ||
+      value.length > 240 ||
+      /[\\\u0000-\u001f?#]/.test(value)
+    )
+      return false;
+    // Preview-only registered loopback paths. No arbitrary remote URL is accepted.
+    if (/^\/[A-Za-z0-9_-]{32,100}\/[a-f0-9]{24}$/.test(value)) return true;
+    return (
+      /^(?:(?:\/?media\/)|(?:app:\/\/cinema\/media\/))[a-zA-Z0-9][a-zA-Z0-9._-]{0,180}$/.test(
+        value,
+      ) && !value.includes("..")
+    );
+  }
+  function settings(input = {}) {
+    return {
+      sceneDuration: Math.max(
+        6,
+        Math.min(180, Number(input.sceneDuration) || 24),
+      ),
+      shuffle: input.shuffle !== false,
+      transition: ["crossfade", "fade-black", "cut"].includes(input.transition)
+        ? input.transition
+        : "crossfade",
+      showLogos: input.showLogos !== false,
+      showActualLogos: input.showActualLogos !== false,
+      showCover: input.showCover !== false,
+      coverPosition: [
+        "beside-title",
+        "bottom-right",
+        "top-right",
+        "top-left",
+      ].includes(input.coverPosition)
+        ? input.coverPosition
+        : "beside-title",
+      framing: ["original", "16:9", "16:10"].includes(input.framing)
+        ? input.framing
+        : "original",
+      staticFallback: input.staticFallback === true,
+      reducedMotion: input.reducedMotion === true,
+      language: input.language === "fr" ? "fr" : "en",
+    };
+  }
+  function catalogGames(catalog, options) {
+    return (Array.isArray(catalog?.games) ? catalog.games : [])
+      .filter(
+        (g) =>
+          g &&
+          g.included !== false &&
+          g.status === "ready" &&
+          g.media &&
+          localMedia(g.media.file) &&
+          localMedia(g.media.thumbnail) &&
+          (g.media.animated || options.staticFallback),
+      )
+      .slice(0, 10000);
+  }
+  function shuffle(items, random = Math.random) {
+    const result = items.slice();
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+  }
+  function framing(game, options) {
+    const mode = ["original", "16:9", "16:10"].includes(game.crop?.mode)
+      ? game.crop.mode
+      : options.framing;
+    const coordinate = (v) =>
+      Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 50;
+    return { mode, x: coordinate(game.crop?.x), y: coordinate(game.crop?.y) };
+  }
+  function frameBox(width, height, mode) {
+    if (mode === "original") return { width, height };
+    const ratio = mode === "16:10" ? 16 / 10 : 16 / 9;
+    const fittedWidth = Math.min(width, height * ratio);
+    return { width: fittedWidth, height: fittedWidth / ratio };
+  }
+  const helpers = {
+    localMedia,
+    settings,
+    catalogGames,
+    shuffle,
+    framing,
+    frameBox,
+  };
+  if (typeof module !== "undefined" && module.exports) module.exports = helpers;
+  if (!global.document) return;
+  const doc = global.document,
+    stage = doc.getElementById("stage"),
+    empty = doc.getElementById("empty");
+  let options = settings(),
+    catalog = { games: [] },
+    games = [],
+    order = [],
+    position = -1,
+    history = [],
+    historyPosition = -1,
+    current = null,
+    retiring = null,
+    pending = null,
+    timer = null,
+    transitionTimer = null,
+    loadTimer = null,
+    destroyed = false,
+    playing = true,
+    loading = false,
+    generation = 0,
+    failures = new Set(),
+    hiddenPause = false;
+  const french = () => options.language === "fr";
+  const epoch = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  let sequence = 0;
+  function nativeSignal(active, game) {
+    if (
+      !catalog.settings?.tripleSync ||
+      !catalog.bridge_token ||
+      !game?.steamAppId
+    )
+      return;
+    try {
+      const storage = global.SteamClient?.Storage;
+      if (typeof storage?.SetString !== "function") return;
+      Promise.resolve(
+        storage.SetString(
+          "gabecubeaura.cinema.playback.v1",
+          JSON.stringify({
+            token: catalog.bridge_token,
+            epoch,
+            sequence: ++sequence,
+            appid: game.steamAppId,
+            at: Date.now(),
+            active,
+          }),
+        ),
+      ).catch(() => {});
+    } catch {
+      /* Optional hardware bridge cannot control the native TV lifecycle. */
+    }
+  }
+  function notify(status, game) {
+    global.StudioPlaybackDiagnostic = {
+      revision: "studio-1",
+      status,
+      gameId: game?.id || null,
+      at: Date.now(),
+    };
+    if (global.parent === global) {
+      global.console?.info?.(
+        "[Animated Screensaver Studio]",
+        JSON.stringify(global.StudioPlaybackDiagnostic),
+      );
+      nativeSignal(status === "playing", game);
+    }
+    if (global.parent !== global)
+      global.parent.postMessage(
+        {
+          type: "cinema-player",
+          status,
+          gameId: game?.id || null,
+          nonce: catalog.previewNonce,
+        },
+        "*",
+      );
+  }
+  function emptyState(failed = false) {
+    empty.hidden = false;
+    empty.querySelector("h1").textContent = failed
+      ? french()
+        ? "Ces médias sont indisponibles."
+        : "These artworks are unavailable."
+      : french()
+        ? "Donnez vie à votre bibliothèque."
+        : "Bring your library to life.";
+    empty.querySelector("p").textContent = failed
+      ? french()
+        ? "Réparez la bibliothèque depuis le gestionnaire."
+        : "Repair your library in the Manager, then preview again."
+      : french()
+        ? "Préparez vos animations favorites dans le gestionnaire."
+        : "Prepare your favorite game animations in the Manager.";
+  }
+  function release(scene) {
+    if (!scene) return;
+    for (const media of scene.querySelectorAll("video")) {
+      media.pause();
+      media.removeAttribute("src");
+      media.load();
+    }
+    for (const image of scene.querySelectorAll("img")) {
+      image._cinemaReleased = true;
+      image._cinemaSuspended = true;
+      if (image._cinemaRestore)
+        image.removeEventListener("load", image._cinemaRestore);
+      image.removeAttribute("src");
+    }
+    for (const canvas of scene.querySelectorAll("canvas"))
+      canvas.width = canvas.height = 0;
+    scene.remove();
+  }
+  function freezeScene(scene) {
+    if (!scene) return;
+    scene.classList.add("paused");
+    const art = scene.querySelector("img.artwork");
+    if (!art || !scene.game.media.animated || art._cinemaReleased) return;
+    // Canvas image sources expose the browser's default animation frame. Freeze that
+    // local frame and unload the native animation rather than pretending a timer pauses it.
+    if (!art._cinemaSnapshot) {
+      if (!art.complete || !art.naturalWidth) return;
+      const canvas = doc.createElement("canvas");
+      canvas.className = "artwork frozen-artwork";
+      canvas.width = art.naturalWidth;
+      canvas.height = art.naturalHeight;
+      canvas.setAttribute("aria-hidden", "true");
+      try {
+        canvas.getContext("2d").drawImage(art, 0, 0);
+      } catch {
+        canvas.width = canvas.height = 0;
+        return;
+      }
+      art.insertAdjacentElement("afterend", canvas);
+      art._cinemaSnapshot = canvas;
+    }
+    if (art._cinemaRestore) {
+      art.removeEventListener("load", art._cinemaRestore);
+      art._cinemaRestore = null;
+    }
+    art._cinemaSuspended = true;
+    art.hidden = true;
+    art.removeAttribute("src");
+  }
+  function resumeScene(scene) {
+    if (!scene) return;
+    scene.classList.remove("paused");
+    const art = scene.querySelector("img.artwork");
+    if (!art?._cinemaSnapshot || !art._cinemaSuspended || art._cinemaReleased)
+      return;
+    art._cinemaSuspended = false;
+    const restored = () => {
+      art._cinemaRestore = null;
+      if (art._cinemaReleased) return;
+      if (!playing) {
+        freezeScene(scene);
+        return;
+      }
+      const canvas = art._cinemaSnapshot;
+      art._cinemaSnapshot = null;
+      art.hidden = false;
+      if (canvas) {
+        canvas.width = canvas.height = 0;
+        canvas.remove();
+      }
+    };
+    art._cinemaRestore = restored;
+    art.addEventListener("load", restored, { once: true });
+    art.src = scene.game.media.file;
+  }
+  function clearTimer() {
+    clearTimeout(timer);
+    timer = null;
+  }
+  function schedule() {
+    clearTimer();
+    if (playing && !destroyed && games.length > 1 && !loading)
+      timer = setTimeout(next, options.sceneDuration * 1000);
+  }
+  function setPaused(paused) {
+    playing = !paused;
+    clearTimer();
+    if (paused) {
+      clearTimeout(transitionTimer);
+      transitionTimer = null;
+      if (current) current.classList.add("visible");
+      if (retiring) {
+        release(retiring);
+        retiring = null;
+      }
+    }
+    for (const scene of stage.children) {
+      if (paused) freezeScene(scene);
+      else resumeScene(scene);
+    }
+    for (const video of stage.querySelectorAll("video")) {
+      if (paused) video.pause();
+      else video.play().catch(() => {});
+    }
+    if (!paused) schedule();
+    notify(paused ? "paused" : "playing", current?.game);
+  }
+  function newOrder(lastId) {
+    order = options.shuffle ? shuffle(games) : games.slice();
+    if (order.length > 1 && order[0]?.id === lastId)
+      [order[0], order[1]] = [order[1], order[0]];
+    position = -1;
+  }
+  function placeCover(scene) {
+    const cover = scene.querySelector(".caption-cover");
+    scene.dataset.coverPosition = options.coverPosition;
+    if (!cover) return;
+    cover.hidden = !options.showCover || cover.dataset.failed === "true";
+    const caption = scene.querySelector(".caption");
+    if (options.coverPosition === "beside-title") caption.prepend(cover);
+    else scene.append(cover);
+    scene.classList.toggle("has-cover", !cover.hidden);
+    const credit = scene.querySelector(".cover-credit");
+    if (credit)
+      credit.hidden = cover.hidden || cover.dataset.fallback === "true";
+  }
+  function placeFrame(scene) {
+    const crop = framing(scene.game, options),
+      frame = scene.querySelector(".art-frame");
+    scene.dataset.framing = crop.mode;
+    scene.style.setProperty(
+      "--crop-x",
+      `${crop.mode === "original" ? 50 : crop.x}%`,
+    );
+    scene.style.setProperty(
+      "--crop-y",
+      `${crop.mode === "original" ? 50 : crop.y}%`,
+    );
+    const box = frameBox(
+      stage.clientWidth || global.innerWidth,
+      stage.clientHeight || global.innerHeight,
+      crop.mode,
+    );
+    frame.style.width = `${box.width}px`;
+    frame.style.height = `${box.height}px`;
+  }
+  function resizeFrames() {
+    for (const scene of stage.children) placeFrame(scene);
+  }
+  function sceneFor(game) {
+    const scene = doc.createElement("section");
+    scene.className = `scene ${!game.media.animated ? "static " : ""}${options.reducedMotion || options.transition === "cut" ? "reduced instant" : ""}`;
+    scene.game = game;
+    const ambience = doc.createElement("img");
+    ambience.className = "ambience";
+    ambience.alt = "";
+    ambience.src = game.media.thumbnail;
+    scene.append(ambience);
+    const isVideo = game.media.format === "webm",
+      art = doc.createElement(isVideo ? "video" : "img");
+    art.className = "artwork";
+    if (isVideo) {
+      art.muted = true;
+      art.defaultMuted = true;
+      art.loop = true;
+      art.playsInline = true;
+      art.preload = "auto";
+      art.poster = game.media.thumbnail;
+      art.setAttribute("disablepictureinpicture", "");
+    } else art.alt = "";
+    const frame = doc.createElement("div");
+    frame.className = "art-frame";
+    frame.append(art);
+    scene.append(frame);
+    const shade = doc.createElement("div");
+    shade.className = "shade";
+    scene.append(shade);
+    const caption = doc.createElement("div");
+    caption.className = "caption";
+    const title = doc.createElement("h1");
+    title.textContent = String(game.name || "");
+    title.hidden = !options.showLogos;
+    const credit = doc.createElement("p");
+    credit.className = "credit";
+    credit.textContent = `${french() ? "Artwork de" : "Artwork by"} ${String(game.media.author?.name || "Unknown")} · SteamGridDB`;
+    const copy = doc.createElement("div");
+    copy.className = "caption-copy";
+    copy.append(title, credit);
+    if (localMedia(game.logo)) {
+      const logo = doc.createElement("img");
+      logo.className = "game-logo";
+      logo.alt = "";
+      logo.src = game.logo;
+      logo.hidden = !options.showActualLogos;
+      logo.addEventListener("error", () => {
+        logo.hidden = true;
+      });
+      copy.prepend(logo);
+    }
+    const cover = doc.createElement("img");
+    cover.className = "caption-cover";
+    cover.alt = french() ? `Jaquette de ${game.name}` : `${game.name} cover`;
+    const hasCover =
+      game.cover?.animated === false && localMedia(game.cover.file);
+    cover.dataset.fallback = String(!hasCover);
+    cover.src = hasCover ? game.cover.file : game.media.thumbnail;
+    cover.addEventListener("error", () => {
+      if (cover._cinemaReleased) return;
+      if (cover.dataset.fallback !== "true") {
+        cover.dataset.fallback = "true";
+        cover.src = game.media.thumbnail;
+      } else cover.dataset.failed = "true";
+      placeCover(scene);
+    });
+    if (hasCover) {
+      const coverCredit = doc.createElement("p");
+      coverCredit.className = "credit cover-credit";
+      coverCredit.textContent = `${french() ? "Jaquette de" : "Cover by"} ${String(game.cover.author?.name || "Unknown")} · SteamGridDB`;
+      copy.append(coverCredit);
+    }
+    caption.append(cover, copy);
+    if (!game.media.animated) {
+      const badge = doc.createElement("p");
+      badge.className = "static-note";
+      badge.textContent = french()
+        ? "Illustration statique · Repli optionnel"
+        : "Static artwork · Optional fallback";
+      copy.append(badge);
+    }
+    scene.append(caption);
+    placeCover(scene);
+    placeFrame(scene);
+    return { scene, art, isVideo };
+  }
+  function display(game, remember = true) {
+    if (destroyed || !game) return;
+    clearTimer();
+    clearTimeout(loadTimer);
+    clearTimeout(transitionTimer);
+    loading = true;
+    if (retiring) {
+      release(retiring);
+      retiring = null;
+    }
+    if (pending) {
+      release(pending);
+      pending = null;
+    }
+    const token = ++generation,
+      { scene, art, isVideo } = sceneFor(game);
+    stage.append(scene);
+    pending = scene;
+    let complete = false;
+    function fail() {
+      if (
+        complete ||
+        token !== generation ||
+        destroyed ||
+        art._cinemaSuspended ||
+        art._cinemaReleased
+      )
+        return;
+      complete = true;
+      clearTimeout(loadTimer);
+      release(scene);
+      pending = null;
+      loading = false;
+      failures.add(game.id);
+      notify("media-error", game);
+      if (failures.size >= games.length) {
+        release(current);
+        current = null;
+        emptyState(true);
+        clearTimer();
+        return;
+      }
+      next();
+    }
+    function ready() {
+      if (complete || token !== generation || destroyed) return;
+      complete = true;
+      clearTimeout(loadTimer);
+      failures.delete(game.id);
+      empty.hidden = true;
+      loading = false;
+      const old = current;
+      current = scene;
+      pending = null;
+      retiring = old;
+      scene.classList.toggle("paused", !playing);
+      if (remember) {
+        history = history.slice(0, historyPosition + 1);
+        history.push(game);
+        if (history.length > 1000) history.shift();
+        historyPosition = history.length - 1;
+      }
+      const show = () => {
+        if (token !== generation || destroyed) return;
+        scene.classList.add("visible");
+        if (isVideo && playing) art.play().catch(runtimeFailure);
+        if (old) {
+          old.classList.remove("visible");
+          transitionTimer = setTimeout(
+            () => {
+              release(old);
+              if (retiring === old) retiring = null;
+            },
+            options.reducedMotion || options.transition === "cut" ? 0 : 1250,
+          );
+        }
+        schedule();
+        notify(playing ? "playing" : "paused", game);
+      };
+      // Fade to black waits for the old scene to disappear before revealing the next.
+      if (
+        old &&
+        options.transition === "fade-black" &&
+        !options.reducedMotion &&
+        playing
+      ) {
+        old.classList.remove("visible");
+        transitionTimer = setTimeout(show, 1200);
+      } else global.requestAnimationFrame(show);
+      if (!playing) {
+        if (isVideo) art.pause();
+        else freezeScene(scene);
+      }
+    }
+    art.addEventListener(isVideo ? "canplay" : "load", ready, { once: true });
+    art.addEventListener("error", fail, { once: true });
+    loadTimer = setTimeout(fail, 15000);
+    art.src = game.media.file;
+    if (isVideo) art.load();
+    // Decoder failures after startup also skip the failed scene.
+    function runtimeFailure() {
+      if (art._cinemaSuspended || art._cinemaReleased) return;
+      if (current === scene) {
+        failures.add(game.id);
+        notify("media-error", game);
+        release(scene);
+        current = null;
+        if (failures.size >= games.length) {
+          clearTimer();
+          emptyState(true);
+        } else next();
+      }
+    }
+    art.addEventListener("error", runtimeFailure);
+  }
+  function next() {
+    if (destroyed || !games.length) return;
+    if (historyPosition < history.length - 1) {
+      display(history[++historyPosition], false);
+      return;
+    }
+    if (position + 1 >= order.length) newOrder(current?.game?.id);
+    let tried = 0,
+      game;
+    do {
+      game = order[++position];
+      if (position >= order.length) {
+        newOrder(current?.game?.id);
+        game = order[++position];
+      }
+    } while (game && failures.has(game.id) && ++tried < games.length);
+    if (game && !failures.has(game.id)) display(game);
+  }
+  function previous() {
+    if (historyPosition > 0) display(history[--historyPosition], false);
+  }
+  function loadCatalog(value) {
+    ++generation;
+    clearTimer();
+    clearTimeout(loadTimer);
+    clearTimeout(transitionTimer);
+    for (const scene of [...stage.children]) release(scene);
+    current = retiring = pending = null;
+    loading = false;
+    failures.clear();
+    catalog = value || { games: [] };
+    options = settings({ ...defaults, ...catalog.settings });
+    games = catalogGames(catalog, options);
+    history = [];
+    historyPosition = -1;
+    newOrder();
+    if (games.length) next();
+    else emptyState();
+  }
+  function setSettings(partial) {
+    const nextSettings = settings({ ...options, ...partial });
+    const structural =
+      nextSettings.staticFallback !== options.staticFallback ||
+      nextSettings.shuffle !== options.shuffle;
+    options = nextSettings;
+    catalog.settings = { ...catalog.settings, ...options };
+    if (structural) {
+      loadCatalog(catalog);
+      return;
+    }
+    for (const scene of stage.children) {
+      scene.classList.toggle("reduced", options.reducedMotion);
+      scene.classList.toggle(
+        "instant",
+        options.reducedMotion || options.transition === "cut",
+      );
+      scene.querySelector("h1").hidden = !options.showLogos;
+      const logo = scene.querySelector(".game-logo");
+      if (logo) logo.hidden = !options.showActualLogos;
+      placeCover(scene);
+      placeFrame(scene);
+    }
+    schedule();
+  }
+  function message(event) {
+    const authorizedPreview =
+      catalog.previewNonce &&
+      event.data?.nonce === catalog.previewNonce &&
+      (event.origin === "https://steamloopback.host" ||
+        /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(event.origin));
+    if (
+      event.source !== global.parent ||
+      event.source === global ||
+      (event.origin !== global.location.origin && !authorizedPreview)
+    )
+      return;
+    const data = event.data;
+    if (!data || data.type !== "cinema") return;
+    if (data.action === "catalog") loadCatalog(data.catalog);
+    else if (data.action === "settings") {
+      setSettings(data.settings || data.partial || {});
+      if (current) notify(playing ? "playing" : "paused", current.game);
+    } else if (data.action === "play") setPaused(false);
+    else if (data.action === "pause") setPaused(true);
+    else if (data.action === "next") next();
+    else if (data.action === "previous") previous();
+  }
+  function visibility() {
+    notify(doc.hidden ? "hidden" : "visible", current?.game);
+    if (doc.hidden) {
+      hiddenPause = playing;
+      setPaused(true);
+    } else if (hiddenPause) {
+      hiddenPause = false;
+      setPaused(false);
+    }
+  }
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    notify("pagehide", current?.game);
+    clearInterval(heartbeat);
+    ++generation;
+    clearTimer();
+    clearTimeout(loadTimer);
+    clearTimeout(transitionTimer);
+    for (const scene of [...stage.children]) release(scene);
+    global.removeEventListener("message", message);
+    global.removeEventListener("resize", resizeFrames);
+    global.removeEventListener("pagehide", destroy);
+    doc.removeEventListener("visibilitychange", visibility);
+    games = [];
+    order = [];
+    history = [];
+    global.CinemaPlayer = null;
+  }
+  global.CinemaPlayer = {
+    play: () => setPaused(false),
+    pause: () => setPaused(true),
+    next,
+    previous,
+    setSettings,
+    destroy,
+  };
+  global.addEventListener("message", message);
+  global.addEventListener("resize", resizeFrames);
+  global.addEventListener("pagehide", destroy, { once: true });
+  doc.addEventListener("visibilitychange", visibility);
+  loadCatalog(global.CINEMA_CATALOG);
+  const heartbeat =
+    catalog.settings?.tripleSync && global.parent === global
+      ? setInterval(() => {
+          if (!doc.hidden && playing && current && catalog.settings?.tripleSync)
+            nativeSignal(true, current.game);
+        }, 30000)
+      : null;
+})(typeof window !== "undefined" ? window : globalThis);

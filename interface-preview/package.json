@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "node build-studio.cjs"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
+  }
+}

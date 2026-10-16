@@ -2,7 +2,51 @@
 
 An English, browser-local documentation preview linked from the public README.
 It reconstructs the development quick panel and settings organisation from
-Lab 121. It is not a SteamOS screenshot or an installed plugin.
+Lab 131. It is not a SteamOS screenshot or an installed plugin.
+
+## Animated Screensaver Studio (Lab 131)
+
+Open `?page=screensaver` for direct access. This section uses the **actual
+Lab 131 React component**, not a separately drawn approximation. The four spaces,
+labels, controls, conditional faceplate framing, advanced disclosure, progress,
+pause/resume and two-step Steam installation confirmation come from that source.
+Only Decky's native controls and service calls are adapted for the browser.
+No plugin backend, settings, credentials or user library is copied.
+
+Collection cards are stills. The player starts only on request, uses the actual
+shared Lab 131 player, and stops when the section closes. It supports previous,
+next, play/pause, transition, title, cover and framing settings. Same-origin
+illustrative 3-second, 30-frame GIFs pan over the already-public Witcher, Deep
+Rock Galactic and Balatro stills; these are **not downloaded SteamGridDB
+animations**. Their 64 × 54 counterparts demonstrate the prepared faceplate
+preview. There are no fabricated game logos. Neither USB playback nor inactivity
+launch in Steam is claimed to be tested here.
+
+All service operations are in-memory rehearsals, identified visibly. Password
+fields reject input; an explicit dummy-key control unlocks the example search
+and preparation paths. A real key must never be entered on this public page.
+The optional Steam owned-library import is disabled. No diagnostic is sent.
+
+Rebuild from the private source checkout (at the verified commit below):
+
+```sh
+cd interface-preview
+npm ci
+npm run build -- /absolute/path/to/GabeCubeAura-Lab-consolidation
+node export_catalog.cjs /absolute/path/to/GabeCubeAura-Lab-consolidation
+```
+
+The builder imports only the named frontend component, replacing its four
+runtime imports with local adapters. It retains the shared player's MIT licence
+and React's licence. The bundle is served statically by existing GitHub Pages;
+there is no new Actions workflow, application server or standalone background UI.
+Inline CSS is allowed solely to render the unchanged component's styling;
+inline scripts remain blocked by the page's Content Security Policy.
+
+Additional regression: `node test_studio_interface.mjs` from the site root with
+the site served on port 4201. Covers player controls/teardown, real local GIF
+loading, filters/candidates, dummy credentials, tools/progress/pause/resume,
+faceplate preview, install confirmation and 320–1024 px overflow checks.
 
 The page is isolated from the lighting simulator. GitHub Pages serves this
 directory from the existing `main` branch. No new hosting or Actions workflow
@@ -13,10 +57,10 @@ is added. This update changes only the interface-preview route and its tests.
 - Quick panel: Home/in game, connected, absent for ten minutes, recently
   disconnected or serial port busy. The heavy in-game artwork/readings are
   hidden when the Faceplate is connected, including a busy port.
-- All seven sidebar sections; six Light bar and six Signals and automation
+- All eight sidebar sections; six Light bar and six Signals and automation
   subpages, with actual controls instead of navigation-only placeholders.
 - First-run preset, brightness/location and review steps.
-- 303 control definitions including expanded dynamic families. This is not a
+- Source-derived control definitions including expanded dynamic families. This is not a
   count of separate features; shared settings can appear in more than one flow.
 - Colours with independent picker, HEX and RGB inputs. Options, labels, ranges
   and descriptive text come from the inspected Lab 121 JSX/constants.
@@ -51,7 +95,7 @@ node interface-preview/export_catalog.cjs /absolute/path/to/plugin-checkout
 
 The generator parses JSX and evaluates only six allowlisted data-only TypeScript
 modules, never the plugin runtime. It exports no account data or real settings.
-Source commit: `9f52a3251bc15b21ea1318a5b1768c3f613fd1f5`.
+Source commit: `d7d82350392018e7226822f003cb22a044667ce1`.
 
 Run `node test_interface.mjs` with a local server on port 4200 (or override
 `GCA_INTERFACE_URL`). The regression suite covers every page, conditional fields,
