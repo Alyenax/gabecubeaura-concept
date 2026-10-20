@@ -13,15 +13,37 @@ const quick = key => page.locator(`[data-compact="${key}"]`);
 const cancel = () => page.locator('#preview-dialog button[value="cancel"]').click();
 try {
   await page.goto(url); await page.waitForSelector('[data-compact="timer"]');
-  assert.equal(await page.locator('#quick-panel img').count(),0,'No permanent artwork preview');
+  if(new URL(url).searchParams.get('lang')==='en') {
+    assert.equal(await quick('timer').textContent(),'Start…','English direct link works before interactions');
+    assert.equal(await page.locator('#compact-language').inputValue(),'en');
+    await page.locator('#compact-language').selectOption('fr');
+  }
+  await page.waitForFunction(()=>document.querySelector('.compact-game-art')?.naturalWidth>0);
+  assert.equal(await page.locator('#quick-panel img').count(),1,'In-game artwork visible by default, including with JSAUX');
+  assert.equal(await page.locator('[data-bar-palette] i').count(),17);
+  const firstArtwork=await page.locator('.compact-game-art').getAttribute('src');
+  await page.locator('#preview-game').selectOption('drg');
+  await page.waitForFunction(()=>document.querySelector('.compact-game-art')?.naturalWidth>0);
+  assert.notEqual(await page.locator('.compact-game-art').getAttribute('src'),firstArtwork);
+  await page.locator('#preview-game').selectOption('witcher');
+  await page.locator('#preview-situation').selectOption('home-connected');
+  assert.equal(await page.locator('#quick-panel img').count(),0,'No game artwork at Home');
+  await page.locator('#compact-visuals').uncheck();
+  assert.equal(await page.locator('[data-bar-palette] i').count(),0,'Optional minimal variant remains available');
   assert.equal(await quick('microphone').count(),0,'Assistant absent until configured');
   assert.equal(await quick('faceplate').count(),1);
   const idleHeight = await page.locator('#product').evaluate(el=>el.getBoundingClientRect().height);
   assert.ok(idleHeight<470,`Compact idle panel: ${idleHeight}px`);
+  await page.locator('#compact-visuals').check();
   await quick('brightness').fill('53');
   await quick('ambience').selectOption('atmosphere');
   assert.equal((await state()).settings.light_bar_day_brightness,53,'Ambience never overwrites brightness');
+  await page.waitForFunction(()=>[...document.querySelectorAll('[data-bar-palette] i')].some(el=>el.style.backgroundColor && el.style.backgroundColor!=='rgb(0, 0, 0)'));
+  await quick('enabled').uncheck();
+  await page.waitForFunction(()=>[...document.querySelectorAll('[data-bar-palette] i')].every(el=>el.style.backgroundColor==='rgb(0, 0, 0)'));
+  await quick('enabled').check();
   assert.equal((await state()).settings.home_display,'weather');
+  await quick('ambience').selectOption('atmosphere');
   assert.equal(await quick('ambience').evaluate(el=>el===document.activeElement),true,'Selection retains focus');
   await page.locator('#preview-situation').selectOption('game-connected');
   await quick('faceplate').selectOption('weather');
@@ -83,6 +105,9 @@ try {
   await page.waitForSelector('[data-compact="timer"]');
   assert.match(await page.locator('#action-status').textContent(),/extinction.*simulée/,'Expiry is local-only');
   await page.clock.resume();
+  for(const language of ['fr','en']) {
+    await page.locator('#compact-language').selectOption(language);
+    assert.match(await quick('timer').textContent(), language==='en' ? /Start/ : /Démarrer/);
   for(const width of [320,390,736,1024]) {
     await page.setViewportSize({width,height:900});
     for(const situation of ['home-connected','game-connected','home-absent','game-absent','home-recent','game-busy']) {
@@ -90,10 +115,14 @@ try {
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)<=1,`No page overflow ${width}/${situation}`);
       const overflow=await page.locator('#quick-panel').evaluate(root=>[...root.querySelectorAll('button,select,input,label')].filter(el=>{const a=el.getBoundingClientRect(),b=root.getBoundingClientRect();return a.width && (a.left<b.left-1 || a.right>b.right+1);}).map(el=>el.outerHTML));
       assert.deepEqual(overflow,[],`Controls contained ${width}/${situation}`);
+      const image=page.locator('.compact-game-art');
+      assert.equal(await image.count(),situation.startsWith('game-') ? 1 : 0);
     }
   }
+  }
+  await page.locator('#compact-language').selectOption('fr');
   await page.setViewportSize({width:1280,height:900});
-  await page.locator('#preview-situation').selectOption('home-connected');
+  await page.locator('#preview-situation').selectOption('game-connected');
   await page.locator('#compact-assistant-ready').uncheck();
   await page.screenshot({path:'/private/tmp/gca-compact-panel-idle.png',fullPage:true});
   await page.locator('#compact-assistant-ready').check(); await quick('microphone').check();
@@ -102,6 +131,24 @@ try {
   await quick('enabled').focus(); await page.keyboard.press('ArrowDown');
   assert.equal(await quick('extend').evaluate(el=>el===document.activeElement),true,'Arrow navigation moves into the timer');
   await page.screenshot({path:'/private/tmp/gca-compact-panel-active.png',fullPage:true});
+  const activeDeadline=(await state()).compact.timerDeadline;
+  await page.locator('#compact-language').selectOption('en');
+  assert.equal((await state()).compact.timerDeadline,activeDeadline,'Language change preserves active timer');
+  assert.equal(await quick('silence').textContent(),'Stop speaking');
+  assert.equal(await quick('ambience').locator('option:checked').textContent(),'Atmosphere');
+  assert.equal(await quick('stop').textContent(),'Stop');
+  await page.screenshot({path:'/private/tmp/gca-compact-panel-en.png',fullPage:true});
+  await quick('stop').click();
+  assert.match(await page.locator('#action-status').textContent(),/Timer stopped/);
+  await quick('timer').click();
+  assert.equal(await page.locator('#dialog-title').textContent(),'Start a timer');
+  await page.locator('#compact-end-action').selectOption('shutdown');
+  assert.equal(await page.locator('#dialog-confirm').textContent(),'Confirm and start');
+  assert.match(await page.locator('#compact-power-note').textContent(),/simulated only/);
+  await cancel();
+  await page.locator('#compact-language').selectOption('fr');
+  await quick('timer').click(); await page.locator('#dialog-confirm').click();
+  await page.waitForSelector('[data-compact="extend"]');
   await page.locator('#open-settings').click();
   assert.equal(await page.locator('#compact-demo-options').isVisible(),false);
   await page.locator('#back-quick').click();
@@ -111,5 +158,5 @@ try {
   assert.equal((await state()).compact.timerDeadline,0); assert.equal((await state()).compact.assistantReady,false);
   assert.deepEqual(errors,[]); assert.deepEqual(failures,[]);
   assert.ok(requests.every(r=>new URL(r).origin===new URL(url).origin),'No external calls, account, mic or hardware');
-  console.log(`PASS compact panel: ${Math.round(idleHeight)}px idle; timer/confirmation/cancel/expiry; independent brightness; contextual JSAUX/assistant; focus; 24 responsive states; no external requests.`);
+  console.log(`PASS compact panel: ${Math.round(idleHeight)}px minimal; FR/EN labels/dialogs/state; game artwork + 17 LEDs; timer/confirmation/cancel/expiry; independent brightness; contextual JSAUX/assistant; 48 responsive states; no external requests.`);
 } finally { await browser.close(); }

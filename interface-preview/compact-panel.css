@@ -23,6 +23,13 @@
 .compact-context{font-size:12px;line-height:1.45;color:#b8c9d7}
 .compact-context>span{display:block;margin-bottom:8px}
 .compact-context>button{width:100%}
+.compact-visual{padding-top:2px!important}
+.compact-game-art{display:block;width:100%;aspect-ratio:460/215;object-fit:cover;border-radius:4px;background:#101720}
+.compact-panel button.compact-art-link{display:block;width:100%;padding:0;text-align:left;border:0;background:transparent}
+.compact-game-title{display:block;font-size:12px;line-height:1.4;margin:7px 0;overflow-wrap:anywhere}
+.compact-led{margin:8px 0 0;gap:2px;background:#0c1119;padding:4px;border-radius:4px}
+.compact-led i{height:14px;border-radius:2px}
+.compact-visual small{font-size:11px;margin-top:6px}
 .compact-dialog-label{display:block;font-size:14px;margin:18px 0 8px}
 #compact-duration,#compact-end-action{width:100%;padding:10px;border:1px solid #52677d;border-radius:4px;color:#edf5fa;background:#263447}
 .compact-duration-options{display:flex;gap:8px}
@@ -30,6 +37,7 @@
 .compact-demo-options{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center;color:#bacbd8;font-size:13px;margin:14px 0}
 .compact-demo-options label{display:flex;align-items:center;gap:7px;min-height:32px}
 .compact-demo-options button{font-size:13px;min-height:32px;padding:6px 10px}
+.compact-demo-options select{font-size:13px;background:#263447;color:#edf5fa;border:1px solid #52677d;border-radius:4px;padding:6px;min-width:0}
 .compact-panel button:focus-visible,.compact-panel select:focus-visible,.compact-panel input:focus-visible{outline:2px solid #8dc9ff;outline-offset:2px}
 @media(pointer:coarse){.compact-panel button,.compact-panel select,.compact-panel .switch-row{min-height:44px}.compact-panel input[type=range]{height:28px}}
 @media(max-width:360px){.compact-panel select{width:132px}.product:not(.settings){padding-left:12px;padding-right:12px}}

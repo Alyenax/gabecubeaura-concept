@@ -1,7 +1,7 @@
 # GabeCubeAura interface preview
 
 A browser-local documentation preview linked from the public README. The default
-view now proposes a compact quick-access panel in French. Full settings and setup
+view now proposes a compact quick-access panel with a French/English selector. Full settings and setup
 remain the historical English Lab 131 demonstration, not the current plugin.
 It is not a SteamOS screenshot or an installed plugin.
 
@@ -20,8 +20,18 @@ The default route shows the new proposal, without an extra product installation:
 - JSAUX shortcut appears only for connected/recently detected hardware scenarios.
   Busy/disconnected controls are disabled, preferences survive reconnection, and
   Home/game selections remain separate. No USB transaction takes place.
-- No permanent artwork image, performance readout or stack of settings buttons.
-  The gear keeps historical full settings accessible; per-game display has one link.
+- Game artwork and a 17-segment LED preview are restored and visible by default,
+  including the connected-JSAUX scenario. The artwork also opens game-display
+  settings, avoiding a duplicate button below the panel. At Home, only the LED preview remains.
+  The external Visual previews checkbox also retains the minimal version for comparison.
+  Game artwork follows the sample-game selector; LED colours react to brightness
+  and lighting on/off. Colours are illustrative, not native effect choreography.
+- French/English applies to the panel, scenario controls, timer dialog, power
+  confirmation and shortcut feedback. Switching language preserves the timer and
+  settings. Direct `?lang=en` links open the English panel. Historical settings
+  remain English and are explicitly labelled as historical.
+- No permanent performance readout or stack of settings buttons. The gear keeps
+  historical full settings accessible; per-game display has one link.
 
 The new surface uses scoped `compact-panel.css` / `compact-panel.js` and the existing
 browser-local state adapter. It does not import or edit any plugin source. It
@@ -31,7 +41,7 @@ engine. No controller compatibility or hardware delivery is claimed by this test
 Run `node test_compact_panel.mjs` with Playwright resolvable by Node and a static
 server on port 4202 (`GCA_INTERFACE_URL` and `GCA_CHROME` may override). Covers timer
 validation/confirmation/cancel/expiry, focus, brightness isolation, context gates,
-reset, settings return, and 24 responsive states. Existing settings/Studio suites
+reset, settings return, translations, artwork/LED visibility and 48 responsive states. Existing settings/Studio suites
 remain separate regression gates.
 
 ## Animated Screensaver Studio (Lab 131)

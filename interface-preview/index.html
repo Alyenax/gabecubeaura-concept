@@ -9,31 +9,31 @@
   <meta name="description" content="Explore GabeCubeAura's Decky panel, every settings section, artwork library and assistant setup in a browser-local documentation preview.">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="interface.css">
-  <link rel="stylesheet" href="compact-panel.css?v=compact-1">
+  <link rel="stylesheet" href="compact-panel.css?v=compact-2">
   <script src="source-catalog.js" defer></script>
   <script src="../simulator-assets.js" defer></script>
   <script src="studio.bundle.js" defer></script>
-  <script src="compact-panel.js?v=compact-1" defer></script>
-  <script src="interface.js?v=compact-1" defer></script>
+  <script src="compact-panel.js?v=compact-2" defer></script>
+  <script src="interface.js?v=compact-2" defer></script>
 </head>
 <body>
   <header class="site-links"><a href="https://github.com/Alyenax/GabeCubeAura#readme" target="_blank" rel="noopener noreferrer">Project README ↗</a><a href="../#lab" target="_blank" rel="noopener noreferrer">Lighting simulator ↗</a><a href="?page=screensaver">Animated Screensaver Studio · Lab 131</a><button id="reset-preview" type="button">Reset preview</button></header>
   <main>
     <section class="demo-controls" aria-label="Preview controls">
-      <label>Vue<select id="preview-view"><option value="quick">Raccourcis Decky · proposition</option><option value="settings">Réglages · ancienne démo</option><option value="setup">Première utilisation · ancienne démo</option></select></label>
-      <label>Situation simulée<select id="preview-situation"><option value="home-connected">Accueil · JSAUX connectée</option><option value="game-connected">En jeu · JSAUX connectée</option><option value="home-absent">Accueil · sans JSAUX</option><option value="game-absent">En jeu · sans JSAUX</option><option value="home-recent">Accueil · JSAUX déconnectée</option><option value="game-busy">En jeu · JSAUX occupée</option></select></label>
-      <label>Jeu d’exemple<select id="preview-game"><option value="witcher">The Witcher 3</option><option value="drg">Deep Rock Galactic</option><option value="balatro">Balatro</option></select></label>
+      <label><span data-compact-text="Vue">Vue</span><select id="preview-view"><option value="quick" data-compact-text="Raccourcis Decky · proposition">Raccourcis Decky · proposition</option><option value="settings" data-compact-text="Réglages · ancienne démo">Réglages · ancienne démo</option><option value="setup" data-compact-text="Première utilisation · ancienne démo">Première utilisation · ancienne démo</option></select></label>
+      <label><span data-compact-text="Situation simulée">Situation simulée</span><select id="preview-situation"><option value="home-connected" data-compact-text="Accueil · JSAUX connectée">Accueil · JSAUX connectée</option><option value="game-connected" data-compact-text="En jeu · JSAUX connectée">En jeu · JSAUX connectée</option><option value="home-absent" data-compact-text="Accueil · sans JSAUX">Accueil · sans JSAUX</option><option value="game-absent" data-compact-text="En jeu · sans JSAUX">En jeu · sans JSAUX</option><option value="home-recent" data-compact-text="Accueil · JSAUX déconnectée">Accueil · JSAUX déconnectée</option><option value="game-busy" data-compact-text="En jeu · JSAUX occupée">En jeu · JSAUX occupée</option></select></label>
+      <label><span data-compact-text="Jeu d’exemple">Jeu d’exemple</span><select id="preview-game"><option value="witcher">The Witcher 3</option><option value="drg">Deep Rock Galactic</option><option value="balatro">Balatro</option></select></label>
     </section>
-    <div class="compact-demo-options" id="compact-demo-options" aria-label="Options de simulation"><label><input type="checkbox" id="compact-assistant-ready">Assistant déjà configuré</label><button type="button" id="compact-assistant-speak" hidden>Simuler une réponse vocale</button></div>
-    <p class="draft-label">PROPOSITION DE PANNEAU · SIMULATION SANS ACTION SUR LE PLUGIN</p>
+    <div class="compact-demo-options" id="compact-demo-options" aria-label="Preview options"><label><span data-compact-text="Langue du panneau">Langue du panneau</span><select id="compact-language"><option value="fr">Français</option><option value="en">English</option></select></label><label><input type="checkbox" id="compact-visuals" checked><span data-compact-text="Aperçus visuels">Aperçus visuels</span></label><label><input type="checkbox" id="compact-assistant-ready"><span data-compact-text="Assistant déjà configuré">Assistant déjà configuré</span></label><button type="button" id="compact-assistant-speak" data-compact-text="Simuler une réponse vocale" hidden>Simuler une réponse vocale</button></div>
+    <p class="draft-label" data-compact-text="PROPOSITION DE PANNEAU · SIMULATION SANS ACTION SUR LE PLUGIN">PROPOSITION DE PANNEAU · SIMULATION SANS ACTION SUR LE PLUGIN</p>
     <section class="product" id="product" aria-label="GabeCubeAura interface reconstruction">
-      <header class="product-header"><strong>GabeCubeAura</strong><div><button id="back-quick" type="button" hidden>Raccourcis</button><button id="open-settings" type="button" aria-label="Settings">⚙</button></div></header>
+      <header class="product-header"><strong>GabeCubeAura</strong><div><button id="back-quick" data-compact-text="Raccourcis" type="button" hidden>Raccourcis</button><button id="open-settings" type="button" aria-label="Settings">⚙</button></div></header>
       <div id="quick-panel"></div>
       <div id="settings-shell" hidden><nav id="sidebar" aria-label="GabeCubeAura settings"></nav><section id="settings-content" aria-label="Selected settings"></section></div>
       <section id="setup-content" hidden aria-label="First-run setup"></section>
       <p class="local-status" role="status" id="action-status">Maquette interactive · aucune action réelle.</p>
     </section>
-    <p class="limits">Nouveau panneau de raccourcis proposé. Les réglages et la première utilisation restent une démonstration historique de la Lab 131, pas le reflet de la Lab actuelle. Tout est simulé : aucun micro ouvert, aucun transfert JSAUX, aucune veille ni extinction réelle. Le focus natif Steam reste à valider dans Decky.</p>
+    <p class="limits" data-compact-text="Réglages et première utilisation : ancienne démo Lab 131 en anglais. Aucun micro, transfert USB ni commande Steam. Le focus natif reste à valider dans Decky.">Réglages et première utilisation : ancienne démo Lab 131 en anglais. Aucun micro, transfert USB ni commande Steam. Le focus natif reste à valider dans Decky.</p>
     <details class="coverage"><summary>Coverage and limitations</summary><div id="coverage-content"></div></details>
   </main>
   <dialog id="preview-dialog" aria-labelledby="dialog-title"><form method="dialog"><h2 id="dialog-title"></h2><div id="dialog-body"></div><div class="dialog-actions"><button value="cancel" formnovalidate>Cancel</button><button id="dialog-confirm" value="confirm">Confirm</button></div></form></dialog>
