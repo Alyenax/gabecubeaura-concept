@@ -1,8 +1,38 @@
 # GabeCubeAura interface preview
 
-An English, browser-local documentation preview linked from the public README.
-It reconstructs the development quick panel and settings organisation from
-Lab 131. It is not a SteamOS screenshot or an installed plugin.
+A browser-local documentation preview linked from the public README. The default
+view now proposes a compact quick-access panel in French. Full settings and setup
+remain the historical English Lab 131 demonstration, not the current plugin.
+It is not a SteamOS screenshot or an installed plugin.
+
+## Compact quick panel proposal · October 20, 2026
+
+The default route shows the new proposal, without an extra product installation:
+
+- One narrow 340px surface: lighting switch, timer, global brightness, ambience.
+- Timer duration presets / 1–240 minutes, then remaining time, +15 minutes and Stop
+  in the same place. Optional sleep/shutdown is explicitly confirmed and simulated
+  only; cancelling or stopping disarms it. The timer continues when visiting settings.
+- Ambience never changes the global brightness. Switching lighting off leaves the
+  timer and assistant microphone preference alone.
+- Assistant shortcut appears only when the external simulation control marks it
+  configured. Stop speaking leaves listening enabled. No microphone is opened.
+- JSAUX shortcut appears only for connected/recently detected hardware scenarios.
+  Busy/disconnected controls are disabled, preferences survive reconnection, and
+  Home/game selections remain separate. No USB transaction takes place.
+- No permanent artwork image, performance readout or stack of settings buttons.
+  The gear keeps historical full settings accessible; per-game display has one link.
+
+The new surface uses scoped `compact-panel.css` / `compact-panel.js` and the existing
+browser-local state adapter. It does not import or edit any plugin source. It
+demonstrates ordinary browser keyboard focus, not Valve's actual Gamescope focus
+engine. No controller compatibility or hardware delivery is claimed by this test.
+
+Run `node test_compact_panel.mjs` with Playwright resolvable by Node and a static
+server on port 4202 (`GCA_INTERFACE_URL` and `GCA_CHROME` may override). Covers timer
+validation/confirmation/cancel/expiry, focus, brightness isolation, context gates,
+reset, settings return, and 24 responsive states. Existing settings/Studio suites
+remain separate regression gates.
 
 ## Animated Screensaver Studio (Lab 131)
 
@@ -55,8 +85,7 @@ is added. This update changes only the interface-preview route and its tests.
 ## Preview states
 
 - Quick panel: Home/in game, connected, absent for ten minutes, recently
-  disconnected or serial port busy. The heavy in-game artwork/readings are
-  hidden when the Faceplate is connected, including a busy port.
+  disconnected or serial port busy. Artwork/readings are not permanently displayed.
 - All eight sidebar sections; six Light bar and six Signals and automation
   subpages, with actual controls instead of navigation-only placeholders.
 - First-run preset, brightness/location and review steps.
@@ -68,7 +97,8 @@ is added. This update changes only the interface-preview route and its tests.
   progress rehearsal, apply to game/Dashboard, assignment and immediate deletion.
 - Assistant readiness/module rehearsals, advanced disclosures, FR/EN command
   glossary and silent native character previews. No audio capture or voice playback.
-- Ambience profile create/save/duplicate/try/delete; no profiles in the quick panel.
+- Ambience profile create/save/duplicate/try/delete. The quick panel proposes an
+  ambience preset selector, not the advanced named-profile editor.
 - Explicit CPU/GPU risk dialog: Cancel does not select Performance.
 - Example update, rollback, diagnostic export and safe preview-JSON import flows.
 

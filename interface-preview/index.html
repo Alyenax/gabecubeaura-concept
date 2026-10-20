@@ -9,31 +9,34 @@
   <meta name="description" content="Explore GabeCubeAura's Decky panel, every settings section, artwork library and assistant setup in a browser-local documentation preview.">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="interface.css">
+  <link rel="stylesheet" href="compact-panel.css?v=compact-1">
   <script src="source-catalog.js" defer></script>
   <script src="../simulator-assets.js" defer></script>
   <script src="studio.bundle.js" defer></script>
-  <script src="interface.js" defer></script>
+  <script src="compact-panel.js?v=compact-1" defer></script>
+  <script src="interface.js?v=compact-1" defer></script>
 </head>
 <body>
   <header class="site-links"><a href="https://github.com/Alyenax/GabeCubeAura#readme" target="_blank" rel="noopener noreferrer">Project README ↗</a><a href="../#lab" target="_blank" rel="noopener noreferrer">Lighting simulator ↗</a><a href="?page=screensaver">Animated Screensaver Studio · Lab 131</a><button id="reset-preview" type="button">Reset preview</button></header>
   <main>
     <section class="demo-controls" aria-label="Preview controls">
-      <label>View<select id="preview-view"><option value="quick">Decky panel</option><option value="settings">Full settings</option><option value="setup">First-run setup</option></select></label>
-      <label>Situation<select id="preview-situation"><option value="home-connected">Home · Faceplate connected</option><option value="game-connected">In game · Faceplate connected</option><option value="home-absent">Home · absent for over 10 min</option><option value="game-absent">In game · no Faceplate</option><option value="home-recent">Home · disconnected 2 min ago</option><option value="game-busy">In game · Faceplate used by another app</option></select></label>
-      <label>Sample game<select id="preview-game"><option value="witcher">The Witcher 3</option><option value="drg">Deep Rock Galactic</option><option value="balatro">Balatro</option></select></label>
+      <label>Vue<select id="preview-view"><option value="quick">Raccourcis Decky · proposition</option><option value="settings">Réglages · ancienne démo</option><option value="setup">Première utilisation · ancienne démo</option></select></label>
+      <label>Situation simulée<select id="preview-situation"><option value="home-connected">Accueil · JSAUX connectée</option><option value="game-connected">En jeu · JSAUX connectée</option><option value="home-absent">Accueil · sans JSAUX</option><option value="game-absent">En jeu · sans JSAUX</option><option value="home-recent">Accueil · JSAUX déconnectée</option><option value="game-busy">En jeu · JSAUX occupée</option></select></label>
+      <label>Jeu d’exemple<select id="preview-game"><option value="witcher">The Witcher 3</option><option value="drg">Deep Rock Galactic</option><option value="balatro">Balatro</option></select></label>
     </section>
-    <p class="draft-label">DRAFT · CODE-BASED RECONSTRUCTION · NOT A STEAMOS SCREENSHOT</p>
+    <div class="compact-demo-options" id="compact-demo-options" aria-label="Options de simulation"><label><input type="checkbox" id="compact-assistant-ready">Assistant déjà configuré</label><button type="button" id="compact-assistant-speak" hidden>Simuler une réponse vocale</button></div>
+    <p class="draft-label">PROPOSITION DE PANNEAU · SIMULATION SANS ACTION SUR LE PLUGIN</p>
     <section class="product" id="product" aria-label="GabeCubeAura interface reconstruction">
-      <header class="product-header"><strong>GabeCubeAura</strong><div><button id="back-quick" type="button" hidden>Decky panel</button><button id="open-settings" type="button" aria-label="Settings">⚙</button></div></header>
+      <header class="product-header"><strong>GabeCubeAura</strong><div><button id="back-quick" type="button" hidden>Raccourcis</button><button id="open-settings" type="button" aria-label="Settings">⚙</button></div></header>
       <div id="quick-panel"></div>
       <div id="settings-shell" hidden><nav id="sidebar" aria-label="GabeCubeAura settings"></nav><section id="settings-content" aria-label="Selected settings"></section></div>
       <section id="setup-content" hidden aria-label="First-run setup"></section>
-      <p class="local-status" role="status" id="action-status">Preview only. No Steam, device or account connection.</p>
+      <p class="local-status" role="status" id="action-status">Maquette interactive · aucune action réelle.</p>
     </section>
-    <p class="limits">English documentation preview updated to Lab 131. Animated Screensaver Studio renders the actual Lab 131 component with browser-only service adapters. Controls change example settings, not your plugin. Readings, downloads, preparation and verification are simulated. No microphone, hardware, API key, GitHub authentication or Steam action is used. Native Steam typography, focus and spacing are approximated.</p>
+    <p class="limits">Nouveau panneau de raccourcis proposé. Les réglages et la première utilisation restent une démonstration historique de la Lab 131, pas le reflet de la Lab actuelle. Tout est simulé : aucun micro ouvert, aucun transfert JSAUX, aucune veille ni extinction réelle. Le focus natif Steam reste à valider dans Decky.</p>
     <details class="coverage"><summary>Coverage and limitations</summary><div id="coverage-content"></div></details>
   </main>
-  <dialog id="preview-dialog" aria-labelledby="dialog-title"><form method="dialog"><h2 id="dialog-title"></h2><div id="dialog-body"></div><div class="dialog-actions"><button value="cancel">Cancel</button><button id="dialog-confirm" value="confirm">Confirm</button></div></form></dialog>
+  <dialog id="preview-dialog" aria-labelledby="dialog-title"><form method="dialog"><h2 id="dialog-title"></h2><div id="dialog-body"></div><div class="dialog-actions"><button value="cancel" formnovalidate>Cancel</button><button id="dialog-confirm" value="confirm">Confirm</button></div></form></dialog>
   <input id="import-file" type="file" accept="application/json,.json" hidden>
 </body>
 </html>

@@ -99,11 +99,11 @@ try {
 
   for (const context of ['home-connected', 'game-connected', 'home-absent', 'game-absent', 'home-recent', 'game-busy']) {
     await page.locator('#preview-view').selectOption('quick'); await page.locator('#preview-situation').selectOption(context);
-    assert.equal(await page.locator('.zone.matrix').count(), !context.includes('absent') ? 1 : 0);
-    assert.equal(await page.locator('#quick-panel .zone img').count(), context === 'game-absent' ? 1 : 0);
+    assert.equal(await page.locator('[data-compact="faceplate"]').count(), !context.includes('absent') ? 1 : 0);
+    assert.equal(await page.locator('#quick-panel img').count(), 0);
   }
   await page.locator('#preview-situation').selectOption('game-absent');
-  for (const game of ['witcher', 'drg', 'balatro']) { await page.locator('#preview-game').selectOption(game); assert.equal(await page.locator('#quick-panel img').getAttribute('src'), `../assets/${game}-header.jpg`); }
+  for (const game of ['witcher', 'drg', 'balatro']) { await page.locator('#preview-game').selectOption(game); assert.equal(await page.locator('.compact-context>span').textContent(), ({witcher:'The Witcher 3: Wild Hunt',drg:'Deep Rock Galactic',balatro:'Balatro'})[game]); }
   await page.locator('#preview-view').selectOption('setup');
   await page.locator('[data-setup-next]').click(); await page.locator('[data-setup-next]').click(); await page.locator('[data-setup-next]').click();
   assert.equal(await page.locator('#preview-view').inputValue(), 'quick');

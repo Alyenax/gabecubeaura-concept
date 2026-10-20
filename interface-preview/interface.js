@@ -99,10 +99,11 @@
   };
   let values = initialValues();
   let gameOverrides = { witcher: 'inherit', drg: 'inherit', balatro: 'inherit' };
-  let view = 'quick', page = 'bar', situation = 'game-absent', game = 'witcher', setupStep = 1;
+  let view = 'quick', page = 'bar', situation = 'home-connected', game = 'witcher', setupStep = 1;
   let library = [{ id: 'sample-witcher', game: 'witcher', mode: 'static', source: 'header' }], selection = 'sample-witcher', prepared = false, preparing = false, progress = 0, studioSource = 'header';
   let profiles = [], selectedProfile = '', apiState = 'absent', githubState = 'disconnected', moduleStates = { speech: false, wake: false, remarks: false, face: false }, facePowered = true;
   let timerDeadline = 0, assistantPhase = '', currentPreview = null, previewTimer = null, jobTimer = null;
+  let timerEndAction = 'none', compactAssistantReady = false, compactSpeaking = false;
   const previews = new Map(), artPalettes = new Map(), disclosureStates = new Map(), frameSheets = new Map();
   const isGame = () => situation.startsWith('game-'), connected = () => situation.endsWith('connected') || situation.endsWith('busy'), recent = () => connected() || situation.endsWith('recent');
   function say(message) { $('#action-status').textContent = message; }
@@ -216,16 +217,36 @@
     $('#preview-view').value = view; $('#preview-situation').value = situation; $('#preview-game').value = game;
     $('#product').classList.toggle('settings', view !== 'quick'); $('#quick-panel').hidden = view !== 'quick'; $('#settings-shell').hidden = view !== 'settings'; $('#setup-content').hidden = view !== 'setup';
     $('#back-quick').hidden = view === 'quick'; $('#open-settings').hidden = view !== 'quick';
+    $('#compact-demo-options').hidden = view !== 'quick';
+    $('#compact-assistant-ready').checked = compactAssistantReady;
+    $('#compact-assistant-speak').hidden = !compactAssistantReady;
+    $('#compact-assistant-speak').disabled = compactSpeaking || !values['assistant.enabled'];
     $('#sidebar').innerHTML = nav.map(([id, label]) => `<button data-nav="${id}" ${parent(page) === id ? 'aria-current="page"' : ''}>${label}</button>`).join('');
   }
   function currentRoute() { return !values.signalbar_enabled ? 'off' : values.steam_control_enabled ? 'steam' : isGame() ? values.display_override === 'inherit' ? values.game_display : values.display_override : values.home_display; }
   const routeLabel = route => [...S.constants.HOME_DISPLAY_OPTIONS, ...S.constants.GAME_DISPLAY_OPTIONS, { data: 'off', label: 'Displays off' }, { data: 'steam', label: 'Steam control' }].find(v => v.data === route)?.label || route;
   function quick() {
-    const route = currentRoute(), g = GAMES[game];
-    $('#quick-panel').innerHTML = `<section class="zone control"><h2>Control</h2><label class="switch-row">Enable GabeCubeAura<input type="checkbox" data-quick-master role="switch" ${values.signalbar_enabled ? 'checked' : ''}></label><div class="key-value">${values.signalbar_enabled ? values.steam_control_enabled ? 'Steam in control' : 'GabeCubeAura in control' : 'Displays off'}</div>${isGame() ? `<label class="hint">Display for this game<select data-quick-override>${[{ value: 'inherit', label: 'Use in-game default' }, ...options(S.constants.GAME_DISPLAY_OPTIONS)].map(v => `<option value="${v.value}" ${values.display_override === v.value ? 'selected' : ''}>${escape(v.label)}</option>`).join('')}</select></label>` : ''}</section>
-      <section class="zone bar"><h2>Light bar</h2><div class="key-value"><b>${escape(routeLabel(route))}</b><br>${isGame() ? escape(g.title) : 'At Home'}</div><div class="palette" data-bar-palette aria-label="17-LED colour preview">${'<i></i>'.repeat(17)}</div>${isGame() && !connected() ? `<div class="hint">CPU 38% · 62°C<br>GPU 67% · 68°C<br><span class="badge">SAMPLE READINGS</span></div>${route === 'artwork' ? `<img src="../assets/${game}-header.jpg" alt="${escape(g.title)} artwork">` : ''}` : ''}<button data-open="routing">Displays and brightness</button></section>
-      ${recent() ? `<section class="zone matrix"><h2>JSAUX matrix · 64 × 54</h2><div class="key-value">${situation.endsWith('busy') ? 'Detected · another app is using the port' : !connected() ? 'Disconnected · last detected 2 min ago' : !facePowered ? 'Faceplate off' : values.faceplate_lab_enabled ? `Showing ${escape(isGame() ? values['faceplate.routing.routes.game'] : values['faceplate.routing.routes.home'])}` : 'Automatic display is off'}</div><button data-refresh>Refresh status</button><button data-open="artwork">Faceplate artwork</button><button data-open="faceplate">Faceplate settings</button><button data-power>${facePowered ? 'Turn Faceplate off' : 'Turn Faceplate on'}</button></section>` : ''}`;
-    palettePreview();
+    const faceKey = isGame() ? 'faceplate.routing.routes.game' : 'faceplate.routing.routes.home';
+    const repaint = (message, focus) => { quick(); GCACompactPanel.restoreFocus($('#quick-panel'), focus); say(message); };
+    GCACompactPanel.render($('#quick-panel'), {
+      enabled: values.signalbar_enabled, brightness: values.light_bar_day_brightness, preset: values.display_preset,
+      game: isGame() ? GAMES[game].title : '',
+      timer: {deadline:timerDeadline, minutes:values.free_timer_minutes, endAction:timerEndAction},
+      assistant: {ready:compactAssistantReady, enabled:values['assistant.enabled'], speaking:compactSpeaking},
+      faceplate: {visible:recent(), connected:connected(), busy:situation.endsWith('busy'), powered:facePowered, route:values[faceKey]}
+    }, {
+      dialog:confirmDialog,
+      enabled: value => { values.signalbar_enabled = value; repaint(value ? 'Éclairage activé · choix conservés.' : 'Éclairage coupé · minuteur et micro inchangés.', 'enabled'); },
+      brightness: value => { values.light_bar_day_brightness = value; say('Luminosité modifiée dans la maquette uniquement.'); },
+      ambience: value => { values.display_preset = value; applyPreset(value); repaint('Ambiance modifiée · luminosité conservée.', 'ambience'); },
+      microphone: value => { values['assistant.enabled'] = value; if (!value) compactSpeaking = false; $('#compact-assistant-speak').disabled = !value || compactSpeaking; repaint(value ? 'Écoute simulée activée. Aucun micro ouvert.' : 'Micro de l’assistant coupé dans la maquette.', 'microphone'); },
+      silence: () => { compactSpeaking = false; $('#compact-assistant-speak').disabled = false; repaint('Réponse arrêtée · écoute inchangée.', 'microphone'); },
+      faceplate: value => { facePowered = value !== 'off'; if (facePowered) values[faceKey] = value; repaint('Affichage JSAUX modifié dans la maquette. Aucun transfert.', 'faceplate'); },
+      startTimer: (minutes, endAction) => { values.free_timer_minutes = minutes; timerEndAction = endAction; timerDeadline = Date.now() + minutes * 60000; repaint('Minuteur démarré dans la maquette. Aucune action réelle.', 'extend'); },
+      extendTimer: () => { timerDeadline += 15 * 60000; repaint('15 minutes ajoutées au minuteur simulé.', 'extend'); },
+      stopTimer: () => { timerDeadline = 0; timerEndAction = 'none'; repaint('Minuteur arrêté · action de fin annulée.', 'timer'); },
+      openGame: () => navigate('routing')
+    });
   }
   async function artworkPalette() {
     const src = `../assets/${game}-header.jpg`; if (artPalettes.has(src)) return artPalettes.get(src);
@@ -299,6 +320,7 @@
   }
   function confirmDialog(title, body, action, warning = false) {
     const dialog = $('#preview-dialog'); $('#dialog-title').textContent = title; $('#dialog-title').classList.toggle('warning-title', warning);
+    dialog.returnValue = ''; dialog.querySelector('button[value="cancel"]').textContent = 'Cancel';
     $('#dialog-body').innerHTML = body; $('#dialog-confirm').textContent = warning ? 'I understand · use this example' : 'Confirm';
     dialog.addEventListener('close', () => { if (dialog.returnValue === 'confirm') { if (title === 'Reset the browser preview?') window.GCAStudioDemo?.reset(); action(); } }, { once: true }); dialog.showModal();
   }
@@ -396,8 +418,8 @@
     if (label === 'Find city') { const target = $('[data-city-results]') || $('#settings-content'); target.innerHTML = target === $('#settings-content') ? target.innerHTML : ''; target.insertAdjacentHTML('beforeend', `<button data-city="Paris, France">Paris, France · sample result</button><button data-city="Seattle, United States">Seattle, United States · sample result</button>`); say('Two fixed city examples. No search request was sent.'); return; }
     if (label === 'Remove city') { values.weather_location = ''; values.night_mode_enabled = false; render(); say('Example city removed.'); return; }
     if (label === 'Change city') { say('Use the city fields below; results are fixed examples.'); return; }
-    if (label === 'Personal limit') { timerDeadline = Date.now() + Number(values.free_timer_minutes) * 60000; render(); say(`Example timer started for ${values.free_timer_minutes} minutes.`); return; }
-    if (label === 'Stop personal limit') { timerDeadline = 0; render(); say('Example timer stopped.'); return; }
+    if (label === 'Personal limit') { timerEndAction = 'none'; timerDeadline = Date.now() + Number(values.free_timer_minutes) * 60000; render(); say(`Example timer started for ${values.free_timer_minutes} minutes.`); return; }
+    if (label === 'Stop personal limit') { timerDeadline = 0; timerEndAction = 'none'; render(); say('Example timer stopped.'); return; }
     if (label === 'Test countdown and final alert') { previewBar('countdown'); return; }
     if (label === 'Accurate speech recognition installed') { moduleInstall('speech'); return; }
     if (label === 'Voice activation installed') { moduleInstall('wake'); return; }
@@ -552,7 +574,9 @@
   $('#preview-situation').onchange = e => { situation = e.target.value; render(); };
   $('#preview-game').onchange = e => { if (preparing) cancelJob(); game = e.target.value; values.display_override = gameOverrides[game] || 'inherit'; prepared = false; render(); };
   $('#open-settings').onclick = () => navigate('bar'); $('#back-quick').onclick = () => { view = 'quick'; render(); };
-  $('#reset-preview').onclick = () => confirmDialog('Reset the browser preview?', '<p>Reset example settings, library, profiles and module states. Your real plugin, files and accounts are unaffected.</p>', () => { cancelJob(); values = initialValues(); gameOverrides = { witcher: 'inherit', drg: 'inherit', balatro: 'inherit' }; library = [{ id: 'sample-witcher', game: 'witcher', mode: 'static', source: 'header' }]; profiles = []; selectedProfile = ''; apiState = 'absent'; githubState = 'disconnected'; moduleStates = { speech: false, wake: false, remarks: false, face: false }; timerDeadline = 0; assistantPhase = ''; view = 'quick'; facePowered = true; prepared = false; render(); say('Browser example reset. No plugin settings changed.'); });
+  $('#compact-assistant-ready').onchange = event => { compactAssistantReady = event.target.checked; compactSpeaking = false; render(); say(compactAssistantReady ? 'Assistant configuré pour cet exemple seulement.' : 'Raccourci assistant masqué.'); };
+  $('#compact-assistant-speak').onclick = () => { compactSpeaking = true; render(); say('Réponse vocale simulée, sans lecture audio. « Faire taire » arrête la réponse sans couper le micro.'); };
+  $('#reset-preview').onclick = () => confirmDialog('Reset the browser preview?', '<p>Reset example settings, library, profiles and module states. Your real plugin, files and accounts are unaffected.</p>', () => { cancelJob(); values = initialValues(); gameOverrides = { witcher: 'inherit', drg: 'inherit', balatro: 'inherit' }; library = [{ id: 'sample-witcher', game: 'witcher', mode: 'static', source: 'header' }]; profiles = []; selectedProfile = ''; apiState = 'absent'; githubState = 'disconnected'; moduleStates = { speech: false, wake: false, remarks: false, face: false }; timerDeadline = 0; timerEndAction = 'none'; compactAssistantReady = false; compactSpeaking = false; assistantPhase = ''; view = 'quick'; facePowered = true; prepared = false; render(); say('Browser example reset. No plugin settings changed.'); });
   $('#import-file').onchange = async event => {
     const file = event.target.files[0]; if (!file) return;
     try { if (file.size > 100000) throw Error('File too large'); const data = JSON.parse(await file.text()); if (data.format !== 'gabecubeaura-interface-preview' || data.revision !== 1 || typeof data.settings !== 'object' || !data.settings) throw Error('Use an exported preview file, not a real plugin configuration');
@@ -561,9 +585,15 @@
     } catch (error) { say(`Import refused: ${error.message}`); } finally { event.target.value = ''; }
   };
   $('#coverage-content').innerHTML = `<p>Reference: Lab 131, ${S.source_commit.slice(0, 7)}. All eight sidebar sections, twelve grouped pages and the first-run flow are browsable. Control labels, option lists and ranges are extracted from the actual source.</p><ul><li>Animated Screensaver Studio renders the actual React component and shared player. Its four spaces include independent Faceplate framing, prepared GIF preview, and simulated preparation, tools and Steam installation.</li><li>Local state: routes, colours with HEX/RGB, assistant setup, profiles, artwork library, assignments, preparation progress, warnings, updates and diagnostics.</li><li>Conditional controls and advanced groups are inspectable. Preview deletes and assignments update immediately.</li><li>Hardware/service actions use labelled sample outcomes, never successful real-device claims. Native visual examples use existing prepared RGB frames.</li><li>Administration and model downloads are rehearsals only. No real API key, login, network diagnostic, microphone, game command or hardware transaction occurs.</li><li>The lighting simulator remains separate for full effect choreography and media analysis.</li></ul>`;
-  window.GCAInterfacePreview = { navigate, inspect: () => ({ view, page, situation, game, settings: { ...values }, library: library.map(i => ({ ...i })), profiles: profiles.map(p => ({ ...p })), apiState, moduleStates: { ...moduleStates }, prepared, preparing }), pages: () => Object.fromEntries(Object.entries(pages).map(([id, fs]) => [id, fs.map(f => ({ label: f.label, key: f.key, type: f.type, source: f.source || null }))])) };
+  window.GCAInterfacePreview = { navigate, inspect: () => ({ view, page, situation, game, settings: { ...values }, library: library.map(i => ({ ...i })), profiles: profiles.map(p => ({ ...p })), apiState, moduleStates: { ...moduleStates }, prepared, preparing, compact:{assistantReady:compactAssistantReady,speaking:compactSpeaking,facePowered,timerDeadline,timerEndAction} }), pages: () => Object.fromEntries(Object.entries(pages).map(([id, fs]) => [id, fs.map(f => ({ label: f.label, key: f.key, type: f.type, source: f.source || null }))])) };
   window.GCAInterfacePreview.exampleKey = value => { if (['absent','detected','verified'].includes(value)) apiState=value; };
-  setInterval(() => { const el = $('[data-timer-status]'); if (el && timerDeadline) { const seconds = Math.max(0, Math.ceil((timerDeadline - Date.now()) / 1000)); el.textContent = seconds ? `Example timer: ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} remaining.` : 'Example timer finished.'; if (!seconds) timerDeadline = 0; } }, 1000);
+  setInterval(() => {
+    if (!timerDeadline) return;
+    const seconds = Math.max(0, Math.ceil((timerDeadline - Date.now()) / 1000));
+    const el = $('[data-timer-status]'); if (el) el.textContent = seconds ? `Example timer: ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} remaining.` : 'Example timer finished.';
+    GCACompactPanel.tick($('#quick-panel'), timerDeadline);
+    if (!seconds) { const end = timerEndAction; timerDeadline = 0; timerEndAction = 'none'; if (view === 'quick') quick(); say(end === 'none' ? 'Minuteur terminé.' : `Minuteur terminé · ${end === 'sleep' ? 'mise en veille' : 'extinction'} simulée uniquement.`); }
+  }, 1000);
   if (new URLSearchParams(location.search).get('page') === 'screensaver') { view='settings';page='screensaver';situation='home-connected'; }
   render();
 })();

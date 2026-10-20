@@ -1,0 +1,35 @@
+/* Scoped proposal. Historical full settings keep their existing geometry. */
+.product:not(.settings){width:min(340px,100%);padding:14px 16px 8px;background:#19212d}
+.product:not(.settings) .product-header{font-size:18px;margin-bottom:8px;min-height:34px}
+.product:not(.settings) .local-status{font-size:11px;line-height:1.4;padding-top:9px;margin-top:8px}
+.compact-panel{font-size:14px;color:#ecf2f8}
+.compact-panel section,.compact-master,.compact-context{padding:12px 0;border-bottom:1px solid #354253}
+.compact-master{padding-top:8px}
+.compact-panel section:last-child{border-bottom:0}
+.compact-line{display:flex;gap:12px;align-items:center;justify-content:space-between;min-height:32px}
+.compact-line>label,.compact-line>span{flex:1;min-width:0}
+.compact-panel button,.compact-panel select{min-height:36px;font-size:13px;border-radius:4px;padding:7px 10px;background:#2d4054;color:#f0f6fb;border:1px solid #486179;max-width:100%}
+.compact-panel button:hover:enabled{background:#3c5972}
+.compact-panel select{width:148px;min-width:0}
+.compact-panel .switch-row{min-height:32px;gap:12px}
+.compact-panel input[type=range]{display:block;width:100%;margin:7px 0 12px;accent-color:#67b9ed;height:20px}
+.compact-panel output{font-variant-numeric:tabular-nums;color:#c7e4f7}
+.compact-panel .compact-clock{font-size:20px;letter-spacing:.02em}
+.compact-timer-actions{display:flex;gap:8px;margin-top:8px}
+.compact-timer-actions button{flex:1}
+.compact-panel small{display:block;font-size:12px;line-height:1.4;color:#b4c4d2;margin-top:8px}
+.compact-assistant>button{width:100%;margin-top:8px}
+.compact-faceplate .compact-line>label{color:#d1c2ed}
+.compact-context{font-size:12px;line-height:1.45;color:#b8c9d7}
+.compact-context>span{display:block;margin-bottom:8px}
+.compact-context>button{width:100%}
+.compact-dialog-label{display:block;font-size:14px;margin:18px 0 8px}
+#compact-duration,#compact-end-action{width:100%;padding:10px;border:1px solid #52677d;border-radius:4px;color:#edf5fa;background:#263447}
+.compact-duration-options{display:flex;gap:8px}
+.compact-duration-options button{flex:1}
+.compact-demo-options{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center;color:#bacbd8;font-size:13px;margin:14px 0}
+.compact-demo-options label{display:flex;align-items:center;gap:7px;min-height:32px}
+.compact-demo-options button{font-size:13px;min-height:32px;padding:6px 10px}
+.compact-panel button:focus-visible,.compact-panel select:focus-visible,.compact-panel input:focus-visible{outline:2px solid #8dc9ff;outline-offset:2px}
+@media(pointer:coarse){.compact-panel button,.compact-panel select,.compact-panel .switch-row{min-height:44px}.compact-panel input[type=range]{height:28px}}
+@media(max-width:360px){.compact-panel select{width:132px}.product:not(.settings){padding-left:12px;padding-right:12px}}
